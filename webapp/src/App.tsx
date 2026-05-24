@@ -12,6 +12,14 @@ import Admin from "./pages/Admin";
 import Verify from "./pages/Verify";
 import Leaderboard from "./pages/Leaderboard";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
+import Coinflip from "./pages/games/Coinflip";
+import Crash from "./pages/games/Crash";
+import Roulette from "./pages/games/Roulette";
+import Mines from "./pages/games/Mines";
+import Slots from "./pages/games/Slots";
+import Jackpot from "./pages/games/Jackpot";
+import Poker from "./pages/games/Poker";
+import ProvablyFairVerify from "./pages/games/ProvablyFairVerify";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +58,14 @@ const App = () => (
           />
           <Route path="/verify" element={<Verify />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/provably-fair" element={<ProvablyFairVerify />} />
+          <Route path="/games/coinflip" element={<ProtectedRoute><Coinflip /></ProtectedRoute>} />
+          <Route path="/games/crash" element={<ProtectedRoute><Crash /></ProtectedRoute>} />
+          <Route path="/games/roulette" element={<ProtectedRoute><Roulette /></ProtectedRoute>} />
+          <Route path="/games/mines" element={<ProtectedRoute><Mines /></ProtectedRoute>} />
+          <Route path="/games/slots" element={<ProtectedRoute><Slots /></ProtectedRoute>} />
+          <Route path="/games/jackpot" element={<ProtectedRoute><Jackpot /></ProtectedRoute>} />
+          <Route path="/games/poker" element={<ProtectedRoute><Poker /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

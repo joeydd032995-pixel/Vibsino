@@ -121,6 +121,60 @@ export const LeaderboardEntrySchema = z.object({
   totalBets: z.number().optional(),
 });
 
+// ---- Game-specific bet schemas ----
+
+export const CoinflipBetSchema = z.object({
+  choice: z.enum(["heads", "tails"]),
+});
+
+export const RouletteBetTypeSchema = z.enum([
+  "straight","split","street","corner","sixline",
+  "column","dozen","red","black","odd","even","high","low",
+]);
+
+export const RouletteIndividualBetSchema = z.object({
+  type: RouletteBetTypeSchema,
+  value: z.number(),
+  numbers: z.array(z.number().int().min(0).max(36)).optional(),
+});
+
+export const RouletteBetSchema = z.object({
+  bets: z.array(RouletteIndividualBetSchema).min(1).max(20),
+});
+
+export const MinesStartSchema = z.object({
+  mineCount: z.number().int().min(1).max(24),
+  clientSeed: z.string().optional(),
+});
+
+export const MinesRevealSchema = z.object({
+  betId: z.string(),
+  tileIndex: z.number().int().min(0).max(24),
+});
+
+export const MinesCashoutSchema = z.object({
+  betId: z.string(),
+});
+
+export const CrashBetSchema = z.object({
+  autoCashout: z.number().min(1.01).max(1000),
+});
+
+export const PokerDrawSchema = z.object({
+  betId: z.string(),
+  heldIndices: z.array(z.number().int().min(0).max(4)).max(5),
+});
+
+export type CoinflipBet = z.infer<typeof CoinflipBetSchema>;
+export type RouletteBetType = z.infer<typeof RouletteBetTypeSchema>;
+export type RouletteIndividualBet = z.infer<typeof RouletteIndividualBetSchema>;
+export type RouletteBet = z.infer<typeof RouletteBetSchema>;
+export type MinesStart = z.infer<typeof MinesStartSchema>;
+export type MinesReveal = z.infer<typeof MinesRevealSchema>;
+export type MinesCashout = z.infer<typeof MinesCashoutSchema>;
+export type CrashBet = z.infer<typeof CrashBetSchema>;
+export type PokerDraw = z.infer<typeof PokerDrawSchema>;
+
 export type UserPublic = z.infer<typeof UserPublicSchema>;
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 export type LoginInput = z.infer<typeof LoginSchema>;

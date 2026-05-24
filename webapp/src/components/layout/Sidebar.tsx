@@ -12,7 +12,7 @@ interface SidebarProps {
 const BASE_NAV = [
   { icon: Home, label: "Lobby", path: "/lobby", adminOnly: false },
   { icon: Trophy, label: "Leaderboard", path: "/leaderboard", adminOnly: false },
-  { icon: ShieldCheck, label: "Verify", path: "/verify", adminOnly: false },
+  { icon: ShieldCheck, label: "Provably Fair", path: "/provably-fair", adminOnly: false },
   { icon: User, label: "Profile", path: "/profile", adminOnly: false },
   { icon: LayoutDashboard, label: "Admin", path: "/admin", adminOnly: true },
 ];
