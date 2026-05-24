@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String    @id @default(cuid())
+  email            String?   @unique
+  username         String    @unique
+  passwordHash     String?
+  walletAddress    String?   @unique
+  walletChain      String?
+  balance          Float     @default(0)
+  role             String    @default("user")
+  isActive         Boolean   @default(true)
+  twoFactorEnabled Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  bets             Bet[]
+  transactions     Transaction[]
+  chatMessages     ChatMessage[]
+  sessions         UserSession[]
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  amount    Float
+  currency  String   @default("USDC")
+  txHash    String?
+  status    String   @default("pending")
+  metadata  String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+model GameSession {
+  id             String   @id @default(cuid())
+  gameType       String
+  status         String   @default("waiting")
+  serverSeed     String
+  serverSeedHash String
+  clientSeed     String?
+  nonce          Int      @default(0)
+  result         String?
+  houseEdge      Float    @default(0.02)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  bets           Bet[]
+
+  @@index([gameType, status])
+}
+
+model Bet {
+  id            String      @id @default(cuid())
+  userId        String
+  gameSessionId String
+  amount        Float
+  currency      String      @default("USDC")
+  betData       String?
+  outcome       String?
+  payout        Float?
+  multiplier    Float?
+  verifiable    Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameSession   GameSession @relation(fields: [gameSessionId], references: [id])
+
+  @@index([userId])
+  @@index([gameSessionId])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  content   String
+  room      String   @default("global")
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([room])
+}
