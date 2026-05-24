@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-export const db = globalForPrisma.prisma ?? new PrismaClient();
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+// Always create a fresh client so hot reloads pick up schema changes.
+// In production the process doesn't hot-reload so this is fine.
+export const db = new PrismaClient();

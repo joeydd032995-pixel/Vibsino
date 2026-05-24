@@ -7,6 +7,11 @@ import { securityHeaders } from "./middleware/security";
 import { rateLimit } from "./middleware/rateLimit";
 import { authRouter } from "./routes/auth";
 import { userRouter } from "./routes/user";
+import { balanceRouter } from "./routes/balance";
+import { notificationsRouter } from "./routes/notifications";
+import { provablyFairRouter } from "./routes/provablyFair";
+import { adminRouter } from "./routes/admin";
+import { leaderboardRouter } from "./routes/leaderboard";
 
 const app = new Hono();
 
@@ -52,6 +57,11 @@ app.get("/health", (c) =>
 // Routes
 app.route("/api/auth", authRouter);
 app.route("/api/user", userRouter);
+app.route("/api/balance", balanceRouter);
+app.route("/api/notifications", notificationsRouter);
+app.route("/api/provably-fair", provablyFairRouter);
+app.route("/api/admin", adminRouter);
+app.route("/api/leaderboard", leaderboardRouter);
 
 const port = Number(process.env.PORT) || 3000;
 

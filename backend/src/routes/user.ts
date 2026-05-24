@@ -1,6 +1,9 @@
 import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
 import { db } from "../lib/db";
 import { authMiddleware } from "../middleware/auth";
+import bcrypt from "bcryptjs";
 import type { User } from "@prisma/client";
 
 type Variables = {
@@ -111,5 +114,89 @@ userRouter.get("/transactions", authMiddleware, async (c) => {
     },
   });
 });
+
+// Update profile
+userRouter.put(
+  "/profile",
+  authMiddleware,
+  zValidator(
+    "json",
+    z.object({
+      username: z
+        .string()
+        .min(3)
+        .max(20)
+        .regex(/^[a-zA-Z0-9_]+$/)
+        .optional(),
+      email: z.string().email().optional().nullable(),
+    })
+  ),
+  async (c) => {
+    const user = c.get("user");
+    const updates = c.req.valid("json");
+
+    if (updates.username) {
+      const existing = await db.user.findFirst({
+        where: { username: updates.username, NOT: { id: user.id } },
+      });
+      if (existing)
+        return c.json(
+          { error: { message: "Username taken", code: "DUPLICATE_USERNAME" } },
+          409
+        );
+    }
+
+    const updated = await db.user.update({
+      where: { id: user.id },
+      data: updates,
+    });
+    return c.json({
+      data: {
+        id: updated.id,
+        username: updated.username,
+        email: updated.email,
+      },
+    });
+  }
+);
+
+// Change password
+userRouter.put(
+  "/password",
+  authMiddleware,
+  zValidator(
+    "json",
+    z.object({
+      currentPassword: z.string(),
+      newPassword: z.string().min(8),
+    })
+  ),
+  async (c) => {
+    const user = c.get("user");
+    const { currentPassword, newPassword } = c.req.valid("json");
+
+    const existing = await db.user.findUnique({ where: { id: user.id } });
+    if (!existing?.passwordHash)
+      return c.json(
+        { error: { message: "No password set", code: "NO_PASSWORD" } },
+        400
+      );
+
+    const valid = await bcrypt.compare(currentPassword, existing.passwordHash);
+    if (!valid)
+      return c.json(
+        { error: { message: "Incorrect password", code: "WRONG_PASSWORD" } },
+        401
+      );
+
+    const newHash = await bcrypt.hash(newPassword, 12);
+    await db.user.update({
+      where: { id: user.id },
+      data: { passwordHash: newHash },
+    });
+
+    return c.json({ data: { success: true } });
+  }
+);
 
 export { userRouter };

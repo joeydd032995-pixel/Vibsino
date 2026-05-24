@@ -1,21 +1,26 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, User, Trophy, Zap, X } from "lucide-react";
+import { Home, User, Trophy, Zap, X, ShieldCheck, LayoutDashboard } from "lucide-react";
 import { GAMES } from "@/lib/games";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 interface SidebarProps {
   open?: boolean;
   onClose?: () => void;
 }
 
-const navItems = [
-  { icon: Home, label: "Lobby", path: "/lobby" },
-  { icon: Trophy, label: "Leaderboard", path: "/leaderboard" },
-  { icon: User, label: "Profile", path: "/profile" },
+const BASE_NAV = [
+  { icon: Home, label: "Lobby", path: "/lobby", adminOnly: false },
+  { icon: Trophy, label: "Leaderboard", path: "/leaderboard", adminOnly: false },
+  { icon: ShieldCheck, label: "Verify", path: "/verify", adminOnly: false },
+  { icon: User, label: "Profile", path: "/profile", adminOnly: false },
+  { icon: LayoutDashboard, label: "Admin", path: "/admin", adminOnly: true },
 ];
 
 const Sidebar = ({ open = true, onClose }: SidebarProps) => {
   const location = useLocation();
+  const user = useAuthStore((s) => s.user);
+  const navItems = BASE_NAV.filter((item) => !item.adminOnly || user?.role === "admin");
 
   return (
     <>

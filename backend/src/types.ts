@@ -74,6 +74,53 @@ export const PaginationSchema = z.object({
   pages: z.number(),
 });
 
+// Balance
+export const DepositSchema = z.object({
+  amount: z.number().min(1).max(10000),
+  currency: z.string().default("USDC"),
+  txHash: z.string().optional(),
+});
+
+export const WithdrawSchema = z.object({
+  amount: z.number().min(1).max(10000),
+  walletAddress: z.string().min(10),
+});
+
+// Notifications
+export const NotificationSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  title: z.string(),
+  message: z.string(),
+  read: z.boolean(),
+  createdAt: z.string(),
+});
+
+// Provably fair
+export const VerifyRoundSchema = z.object({
+  serverSeed: z.string().min(10),
+  clientSeed: z.string().min(1),
+  nonce: z.number().int().min(0),
+  gameType: z.enum(["crash", "roulette", "coinflip", "mines", "slots", "jackpot", "poker"]),
+});
+
+// Admin
+export const UpdateUserAdminSchema = z.object({
+  role: z.enum(["user", "admin", "vip"]).optional(),
+  isActive: z.boolean().optional(),
+  balance: z.number().min(0).optional(),
+});
+
+// Leaderboard
+export const LeaderboardEntrySchema = z.object({
+  rank: z.number(),
+  userId: z.string(),
+  username: z.string(),
+  totalWon: z.number().optional(),
+  totalWagered: z.number().optional(),
+  totalBets: z.number().optional(),
+});
+
 export type UserPublic = z.infer<typeof UserPublicSchema>;
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 export type LoginInput = z.infer<typeof LoginSchema>;
@@ -83,3 +130,9 @@ export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 export type PlaceBetInput = z.infer<typeof PlaceBetSchema>;
 export type Transaction = z.infer<typeof TransactionSchema>;
 export type Pagination = z.infer<typeof PaginationSchema>;
+export type DepositInput = z.infer<typeof DepositSchema>;
+export type WithdrawInput = z.infer<typeof WithdrawSchema>;
+export type Notification = z.infer<typeof NotificationSchema>;
+export type VerifyRoundInput = z.infer<typeof VerifyRoundSchema>;
+export type UpdateUserAdmin = z.infer<typeof UpdateUserAdminSchema>;
+export type LeaderboardEntry = z.infer<typeof LeaderboardEntrySchema>;
