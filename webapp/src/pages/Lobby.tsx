@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import GameCard from "@/components/casino/GameCard";
@@ -7,6 +8,24 @@ import { GAMES } from "@/lib/games";
 import { Users, TrendingUp, Activity } from "lucide-react";
 
 const CATEGORIES = ["All", "Multiplayer", "Classic", "Strategy", "Simple", "Pool", "Card Game"];
+
+const containerVariants = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.06,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { y: 24, opacity: 0 },
+  show: {
+    y: 0,
+    opacity: 1,
+    transition: { type: "spring" as const, stiffness: 260, damping: 22 },
+  },
+};
 
 const Lobby = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -76,12 +95,20 @@ const Lobby = () => {
                 ))}
               </div>
 
-              {/* Game grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {/* Game grid with stagger animation */}
+              <motion.div
+                key={activeCategory}
+                variants={containerVariants}
+                initial="hidden"
+                animate="show"
+                className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
+              >
                 {filtered.map((game, i) => (
-                  <GameCard key={game.id} game={game} index={i} />
+                  <motion.div key={game.id} variants={itemVariants}>
+                    <GameCard game={game} index={i} />
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             </div>
 
             {/* Live feed sidebar — desktop only */}

@@ -34,12 +34,16 @@ const PAYTABLE = [
 
 const ALL_SYMBOLS = Object.keys(SYMBOL_MAP);
 
+// Per-reel stop times (staggered)
+const REEL_STOP_TIMES = [600, 1000, 1400];
+
 const Slots = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [amount, setAmount] = useState("1");
   const [result, setResult] = useState<GameResult | null>(null);
   const [spinning, setSpinning] = useState(false);
   const [displayReels, setDisplayReels] = useState<string[]>(["CHERRY", "ORANGE", "LEMON"]);
+  const [stoppedReels, setStoppedReels] = useState<boolean[]>([false, false, false]);
   const [showPaytable, setShowPaytable] = useState(false);
   const spinTimers = useRef<ReturnType<typeof setInterval>[]>([]);
 
@@ -53,8 +57,9 @@ const Slots = () => {
 
     setSpinning(true);
     setResult(null);
+    setStoppedReels([false, false, false]);
 
-    // Start spinning animation
+    // Start spinning animation for all reels
     spinTimers.current.forEach(clearInterval);
     spinTimers.current = [];
 
@@ -65,15 +70,15 @@ const Slots = () => {
           next[r] = ALL_SYMBOLS[Math.floor(Math.random() * ALL_SYMBOLS.length)] ?? "CHERRY";
           return next;
         });
-      }, 80);
+      }, 70);
       spinTimers.current.push(timer);
     }
 
     try {
       const res = await spin({ amount: amt });
-      const finalReels = (res.gameData as { reels?: string[] }).reels ?? ["LEMON","LEMON","LEMON"];
+      const finalReels = (res.gameData as { reels?: string[] }).reels ?? ["LEMON", "LEMON", "LEMON"];
 
-      // Stop reels with stagger
+      // Stop reels with staggered timing + spring settle
       for (let r = 0; r < 3; r++) {
         setTimeout(() => {
           clearInterval(spinTimers.current[r]!);
@@ -82,15 +87,21 @@ const Slots = () => {
             next[r] = finalReels[r] ?? "LEMON";
             return next;
           });
+          setStoppedReels((prev) => {
+            const next = [...prev];
+            next[r] = true;
+            return next;
+          });
           if (r === 2) {
             setSpinning(false);
             setResult(res);
           }
-        }, 600 + r * 400);
+        }, REEL_STOP_TIMES[r]);
       }
     } catch {
       spinTimers.current.forEach(clearInterval);
       setSpinning(false);
+      setStoppedReels([true, true, true]);
     }
   };
 
@@ -126,36 +137,63 @@ const Slots = () => {
               style={{ background: "rgba(13,13,20,0.9)", border: "1px solid rgba(245,158,11,0.1)" }}
             >
               {/* Machine frame */}
-              <div
+              <motion.div
                 className="w-full max-w-sm rounded-2xl p-6"
+                animate={
+                  isWin && !spinning
+                    ? { boxShadow: ["0 0 20px rgba(245,158,11,0.15)", "0 0 40px rgba(245,158,11,0.4)", "0 0 20px rgba(245,158,11,0.15)"] }
+                    : { boxShadow: "0 0 30px rgba(245,158,11,0.1)" }
+                }
+                transition={isWin ? { duration: 1.2, repeat: 2, ease: "easeInOut" } : {}}
                 style={{
                   background: "rgba(0,0,0,0.4)",
                   border: "2px solid rgba(245,158,11,0.3)",
-                  boxShadow: "0 0 30px rgba(245,158,11,0.1)",
                 }}
               >
                 {/* Reels */}
                 <div className="flex gap-3 justify-center mb-4">
-                  {displayReels.map((symbol, i) => (
-                    <motion.div
-                      key={i}
-                      className="w-20 h-20 rounded-xl flex items-center justify-center text-4xl"
-                      animate={spinning ? { y: [-4, 4, -4], transition: { repeat: Infinity, duration: 0.1 } } : { y: 0 }}
-                      style={{
-                        background:
-                          result && isWin
-                            ? "rgba(245,158,11,0.15)"
+                  {displayReels.map((symbol, i) => {
+                    const isStopped = stoppedReels[i];
+                    const showWinGlow = isWin && !spinning && isStopped;
+
+                    return (
+                      <motion.div
+                        key={i}
+                        className="w-20 h-20 rounded-xl flex items-center justify-center text-4xl relative overflow-hidden"
+                        // While spinning: shake on Y axis
+                        animate={
+                          !isStopped && spinning
+                            ? { y: [-6, 6, -6], transition: { repeat: Infinity, duration: 0.09, ease: "linear" } }
+                            : isStopped
+                            ? {
+                                y: [4, -3, 1.5, -0.5, 0],
+                                transition: { type: "spring", stiffness: 220, damping: 14, duration: 0.5 },
+                              }
+                            : { y: 0 }
+                        }
+                        style={{
+                          background: showWinGlow
+                            ? "rgba(245,158,11,0.18)"
                             : "rgba(255,255,255,0.05)",
-                        border:
-                          result && isWin
-                            ? "1px solid rgba(245,158,11,0.4)"
+                          border: showWinGlow
+                            ? "1px solid rgba(245,158,11,0.5)"
                             : "1px solid rgba(255,255,255,0.08)",
-                        boxShadow: result && isWin ? "0 0 20px rgba(245,158,11,0.2)" : undefined,
-                      }}
-                    >
-                      {SYMBOL_MAP[symbol] ?? symbol}
-                    </motion.div>
-                  ))}
+                          boxShadow: showWinGlow ? "0 0 24px rgba(245,158,11,0.35)" : undefined,
+                        }}
+                      >
+                        {/* Win pulse overlay */}
+                        {showWinGlow && (
+                          <motion.div
+                            className="absolute inset-0 rounded-xl"
+                            animate={{ opacity: [0, 0.3, 0] }}
+                            transition={{ duration: 0.8, repeat: 3, ease: "easeInOut" }}
+                            style={{ background: "radial-gradient(circle, rgba(245,158,11,0.4), transparent)" }}
+                          />
+                        )}
+                        {SYMBOL_MAP[symbol] ?? symbol}
+                      </motion.div>
+                    );
+                  })}
                 </div>
 
                 {/* Pay line */}
@@ -168,22 +206,26 @@ const Slots = () => {
                 <AnimatePresence>
                   {result && !spinning && (
                     <motion.div
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: [0.8, 1.08, 1] }}
+                      transition={{ type: "spring", stiffness: 300, damping: 18 }}
                       className="text-center"
                     >
                       <div
                         className="text-xl font-bold"
-                        style={{ color: isWin ? "#10b981" : "#ef4444" }}
+                        style={{
+                          color: isWin ? "#10b981" : "#ef4444",
+                          textShadow: isWin ? "0 0 20px rgba(16,185,129,0.5)" : undefined,
+                        }}
                       >
                         {isWin
-                          ? `${result.multiplier}x — +$${result.payout.toFixed(2)}`
+                          ? `🎉 ${result.multiplier}x — +$${result.payout.toFixed(2)}`
                           : `No win — -$${parseFloat(amount).toFixed(2)}`}
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
+              </motion.div>
 
               {/* Paytable toggle */}
               <button

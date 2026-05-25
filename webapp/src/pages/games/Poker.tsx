@@ -28,29 +28,44 @@ const PAYTABLE = [
   { hand: "Jacks or Better", pays: "1x" },
 ];
 
+// 3D flip card component
+// Key changes trigger re-mount → re-plays entrance animation
 const CardDisplay = ({
   card,
   held,
   onClick,
   selectable,
+  index,
 }: {
   card: Card;
   held: boolean;
   onClick: () => void;
   selectable: boolean;
+  index: number;
 }) => (
-  <div className="flex flex-col items-center gap-1.5">
+  <div className="flex flex-col items-center gap-1.5" style={{ perspective: "700px" }}>
     <motion.button
       onClick={onClick}
       disabled={!selectable}
-      whileHover={selectable ? { y: -6 } : {}}
+      // Entrance: flip in from face-down, staggered by index
+      initial={{ rotateY: 90, y: -16, opacity: 0 }}
+      animate={{ rotateY: 0, y: 0, opacity: 1 }}
+      transition={{
+        delay: index * 0.09,
+        duration: 0.38,
+        ease: [0.34, 1.26, 0.64, 1],
+      }}
+      whileHover={selectable ? { y: -8, transition: { duration: 0.15 } } : {}}
       whileTap={selectable ? { scale: 0.95 } : {}}
-      className="relative w-16 h-24 md:w-20 md:h-28 rounded-xl flex flex-col items-start justify-start p-2 transition-all"
+      className="relative w-16 h-24 md:w-20 md:h-28 rounded-xl flex flex-col items-start justify-start p-2"
       style={{
         background: held ? "rgba(245,158,11,0.15)" : "rgba(255,255,255,0.06)",
         border: `2px solid ${held ? "#f59e0b" : "rgba(255,255,255,0.1)"}`,
-        boxShadow: held ? "0 0 15px rgba(245,158,11,0.3)" : undefined,
+        boxShadow: held
+          ? "0 0 18px rgba(245,158,11,0.35), 0 4px 12px rgba(0,0,0,0.4)"
+          : "0 4px 12px rgba(0,0,0,0.3)",
         cursor: selectable ? "pointer" : "default",
+        transformStyle: "preserve-3d",
       }}
     >
       <span className="text-xs font-bold leading-none" style={{ color: SUIT_COLORS[card.suit] }}>
@@ -59,13 +74,16 @@ const CardDisplay = ({
       <span className="text-lg leading-none mt-0.5" style={{ color: SUIT_COLORS[card.suit] }}>
         {SUIT_SYMBOLS[card.suit]}
       </span>
-      <span className="absolute bottom-2 right-2 text-base" style={{ color: SUIT_COLORS[card.suit], transform: "rotate(180deg)" }}>
+      <span
+        className="absolute bottom-2 right-2 text-base"
+        style={{ color: SUIT_COLORS[card.suit], transform: "rotate(180deg)" }}
+      >
         {SUIT_SYMBOLS[card.suit]}
       </span>
     </motion.button>
     {selectable && (
       <span
-        className="text-xs font-semibold px-2 py-0.5 rounded-md"
+        className="text-xs font-semibold px-2 py-0.5 rounded-md transition-all duration-200"
         style={{
           background: held ? "rgba(245,158,11,0.2)" : "rgba(255,255,255,0.05)",
           color: held ? "#f59e0b" : "#6b7280",
@@ -88,6 +106,8 @@ const Poker = () => {
   const [drawResult, setDrawResult] = useState<PokerDrawResult | null>(null);
   const [showPaytable, setShowPaytable] = useState(false);
   const [serverSeedHash, setServerSeedHash] = useState("");
+  // Increment on each deal to force all cards to re-mount → re-play entrance animation
+  const [dealCount, setDealCount] = useState(0);
 
   const user = useAuthStore((s) => s.user);
   const { mutateAsync: deal, isPending: dealing } = usePokerDeal();
@@ -104,6 +124,7 @@ const Poker = () => {
       setBetId(res.betId);
       setHand(res.initialHand);
       setServerSeedHash(res.serverSeedHash);
+      setDealCount((c) => c + 1);
       setPhase("deal");
     } catch {
       // handled by hook
@@ -168,11 +189,16 @@ const Poker = () => {
                 ) : (
                   hand.map((card, i) => (
                     <CardDisplay
-                      key={`${card.rank}${card.suit}-${i}`}
+                      // Key includes rank+suit+index+dealCount:
+                      // - dealCount change → ALL cards remount → all flip in (deal)
+                      // - rank/suit change → only that card remounts → only replaced cards flip in (draw)
+                      // - held cards keep rank/suit → no remount → no unwanted re-animation
+                      key={`${card.rank}${card.suit}-${i}-${dealCount}`}
                       card={card}
                       held={heldIndices.includes(i)}
                       onClick={() => phase === "deal" && toggleHold(i)}
                       selectable={phase === "deal"}
+                      index={i}
                     />
                   ))
                 )}
@@ -182,13 +208,17 @@ const Poker = () => {
               <AnimatePresence>
                 {drawResult && phase === "result" && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, scale: 0.85, y: 8 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
                     className="text-center"
                   >
                     <div
                       className="text-2xl font-bold"
-                      style={{ color: isWin ? "#f59e0b" : "#ef4444" }}
+                      style={{
+                        color: isWin ? "#f59e0b" : "#ef4444",
+                        textShadow: isWin ? "0 0 24px rgba(245,158,11,0.5)" : undefined,
+                      }}
                     >
                       {drawResult.handRank}
                     </div>

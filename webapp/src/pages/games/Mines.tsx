@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Bomb, Gem, RefreshCw, DollarSign } from "lucide-react";
+import { ArrowLeft, Bomb, Gem, DollarSign } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -25,11 +25,30 @@ interface MinesState {
 
 const MINE_COUNTS = [1, 3, 5, 10, 24];
 
+// Grid stagger variants
+const gridVariants = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.025 },
+  },
+};
+
+const tileVariants = {
+  hidden: { scale: 0, opacity: 0 },
+  show: {
+    scale: 1,
+    opacity: 1,
+    transition: { type: "spring" as const, stiffness: 280, damping: 18 },
+  },
+};
+
 const Mines = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [amount, setAmount] = useState("1");
   const [mineCount, setMineCount] = useState(3);
   const [game, setGame] = useState<MinesState | null>(null);
+  // Track which tile just exploded for extra shake animation
+  const [explodedTile, setExplodedTile] = useState<number | null>(null);
 
   const user = useAuthStore((s) => s.user);
   const { mutateAsync: startGame, isPending: starting } = useMinesGame();
@@ -42,6 +61,7 @@ const Mines = () => {
     if (!amt || amt <= 0) return;
     try {
       const res: MinesStartResult = await startGame({ amount: amt, mineCount });
+      setExplodedTile(null);
       setGame({
         betId: res.betId,
         mineCount: res.mineCount,
@@ -64,6 +84,7 @@ const Mines = () => {
     try {
       const res: MinesRevealResult = await reveal({ betId: game.betId, tileIndex });
       if (res.hit) {
+        setExplodedTile(tileIndex);
         setGame((g) => g ? { ...g, minePositions: res.minePositions ?? [], phase: "lost" } : g);
       } else {
         setGame((g) =>
@@ -102,6 +123,7 @@ const Mines = () => {
 
   const handleReset = () => {
     setGame(null);
+    setExplodedTile(null);
   };
 
   const getTileState = (i: number) => {
@@ -167,8 +189,9 @@ const Mines = () => {
               <AnimatePresence>
                 {game && (game.phase === "won" || game.phase === "lost") && (
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
+                    initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
                     className="mb-4 p-3 rounded-xl text-center font-semibold"
                     style={{
                       background: game.phase === "won" ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)",
@@ -183,28 +206,44 @@ const Mines = () => {
                 )}
               </AnimatePresence>
 
-              {/* 5x5 Grid */}
-              <div className="grid grid-cols-5 gap-2">
+              {/* 5×5 Grid — re-mounts and staggers on each new game */}
+              <motion.div
+                key={game?.betId ?? "idle"}
+                variants={gridVariants}
+                initial="hidden"
+                animate="show"
+                className="grid grid-cols-5 gap-2"
+              >
                 {Array.from({ length: 25 }, (_, i) => {
                   const state = getTileState(i);
                   const isClickable = game?.phase === "playing" && state === "hidden" && !revealing;
+                  const isHitMine = state === "mine" && i === explodedTile;
+
                   return (
                     <motion.button
                       key={i}
+                      variants={tileVariants}
                       onClick={() => isClickable && handleReveal(i)}
                       disabled={!isClickable}
-                      whileHover={isClickable ? { scale: 1.05 } : {}}
-                      whileTap={isClickable ? { scale: 0.95 } : {}}
+                      whileHover={isClickable ? { scale: 1.07, transition: { type: "spring", stiffness: 400 } } : {}}
+                      whileTap={isClickable ? { scale: 0.93 } : {}}
                       animate={
-                        state === "mine"
-                          ? { scale: [1, 1.2, 1], backgroundColor: ["#1a1a2e", "#7f1d1d", "#7f1d1d"] }
+                        isHitMine
+                          ? {
+                              rotate: [0, -14, 14, -10, 10, -6, 6, 0],
+                              scale: [1, 1.4, 1.2, 1.35, 1],
+                              transition: { duration: 0.55 },
+                            }
                           : state === "safe"
-                          ? { scale: [1, 1.15, 1] }
+                          ? {
+                              scale: [1, 1.18, 1],
+                              transition: { type: "spring", stiffness: 400, damping: 12 },
+                            }
                           : {}
                       }
                       className={cn(
                         "aspect-square rounded-xl flex items-center justify-center transition-colors",
-                        isClickable && "cursor-pointer hover:brightness-110"
+                        isClickable && "cursor-pointer"
                       )}
                       style={{
                         background:
@@ -221,6 +260,12 @@ const Mines = () => {
                             : state === "safe"
                             ? "1px solid rgba(16,185,129,0.4)"
                             : "1px solid rgba(255,255,255,0.08)",
+                        boxShadow:
+                          isHitMine
+                            ? "0 0 20px rgba(239,68,68,0.5)"
+                            : state === "safe"
+                            ? "0 0 12px rgba(16,185,129,0.25)"
+                            : "none",
                       }}
                     >
                       {state === "mine" && <Bomb className="h-5 w-5 text-red-400" />}
@@ -231,7 +276,7 @@ const Mines = () => {
                     </motion.button>
                   );
                 })}
-              </div>
+              </motion.div>
 
               {/* Server seed hash */}
               {game && (
