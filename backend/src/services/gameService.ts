@@ -562,6 +562,28 @@ export async function addJackpotEntry(userId: string, amount: number) {
     _sum: { amount: true },
   });
 
+  // Broadcast updated jackpot state to all watchers
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { io } = require("../socket/index") as { io: import("socket.io").Server | null };
+    const state = await getCurrentJackpot();
+    io?.to("jackpot").emit("jackpot:state", state);
+    if (jackpotResult) {
+      // Find winner username from session bets
+      const winnerBet = await db.bet.findFirst({
+        where: { gameSessionId: session.id, outcome: "win" },
+        include: { user: { select: { username: true } } },
+      });
+      io?.to("jackpot").emit("jackpot:winner", {
+        winnerId: jackpotResult.winnerId,
+        winnerUsername: winnerBet?.user.username ?? "Unknown",
+        payout: poolAgg._sum.amount ? poolAgg._sum.amount * (1 - JACKPOT_HOUSE_EDGE) : 0,
+      });
+    }
+  } catch {
+    // Socket server may not be initialized yet — non-fatal
+  }
+
   return {
     betId: bet.id,
     tickets,

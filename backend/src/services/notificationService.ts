@@ -1,4 +1,10 @@
 import { db } from "../lib/db";
+// Lazy import to avoid circular dependency — socket/index imports gameService
+// which may import notificationService at module load time
+function getIO() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return (require("../socket/index") as { io: import("socket.io").Server | null }).io;
+}
 
 export async function createNotification(
   userId: string,
@@ -7,7 +13,7 @@ export async function createNotification(
   message: string,
   metadata?: object
 ) {
-  return db.notification.create({
+  const notification = await db.notification.create({
     data: {
       userId,
       type,
@@ -16,6 +22,23 @@ export async function createNotification(
       metadata: metadata ? JSON.stringify(metadata) : null,
     },
   });
+
+  // Push real-time notification to the user's personal room
+  try {
+    const io = getIO();
+    io?.to(`user:${userId}`).emit("notification", {
+      id: notification.id,
+      type,
+      title,
+      message,
+      metadata: metadata ?? null,
+      createdAt: notification.createdAt.toISOString(),
+    });
+  } catch {
+    // Socket server may not be up yet — non-fatal
+  }
+
+  return notification;
 }
 
 export async function getUserNotifications(userId: string, limit = 30) {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Trophy, Users, Ticket } from "lucide-react";
@@ -8,17 +8,41 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useJackpotBet, useJackpotState, useGameHistory } from "@/hooks/useGameApi";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useSocket } from "@/hooks/useSocket";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
 const Jackpot = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [amount, setAmount] = useState("10");
-  const [lastResult, setLastResult] = useState<{ winnerId?: string; winnerIndex?: number } | null>(null);
+  const [lastResult, setLastResult] = useState<{ winnerId?: string; winnerUsername?: string; payout?: number } | null>(null);
 
   const user = useAuthStore((s) => s.user);
   const { mutateAsync: placeBet, isPending } = useJackpotBet();
   const { data: jackpot, refetch } = useJackpotState();
   const { data: history } = useGameHistory("jackpot");
+  const queryClient = useQueryClient();
+  const { socket } = useSocket();
+
+  // Real-time jackpot updates via socket
+  useEffect(() => {
+    if (!socket) return;
+
+    const onState = (state: unknown) => {
+      queryClient.setQueryData(["jackpot"], state);
+    };
+    const onWinner = (data: { winnerId: string; winnerUsername: string; payout: number }) => {
+      setLastResult(data);
+      refetch();
+    };
+
+    socket.on("jackpot:state", onState);
+    socket.on("jackpot:winner", onWinner);
+    return () => {
+      socket.off("jackpot:state", onState);
+      socket.off("jackpot:winner", onWinner);
+    };
+  }, [socket, queryClient, refetch]);
 
   const handleBet = async () => {
     const amt = parseFloat(amount);
@@ -26,7 +50,7 @@ const Jackpot = () => {
     try {
       const res = await placeBet({ amount: amt });
       if (res.jackpotResult) {
-        setLastResult(res.jackpotResult as { winnerId?: string; winnerIndex?: number });
+        setLastResult({ winnerId: (res.jackpotResult as { winnerId?: string }).winnerId });
       }
       refetch();
     } catch {
@@ -174,8 +198,13 @@ const Jackpot = () => {
                     style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)" }}
                   >
                     <Trophy className="h-8 w-8 text-amber-400 mx-auto mb-2" />
-                    <p className="text-sm font-semibold text-amber-400">Jackpot triggered!</p>
-                    <p className="text-xs text-gray-400 mt-1">Winner selected from entries</p>
+                    <p className="text-sm font-semibold text-amber-400">Jackpot triggered! 🎉</p>
+                    {lastResult?.winnerUsername && (
+                      <p className="text-xs text-white mt-1 font-semibold">{lastResult.winnerUsername} won!</p>
+                    )}
+                    {lastResult?.payout !== undefined && (
+                      <p className="text-xs text-green-400 mt-0.5">${lastResult.payout.toFixed(2)}</p>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
