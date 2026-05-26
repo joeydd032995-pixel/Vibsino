@@ -46,11 +46,14 @@ const GAMES_METADATA = [
 // ---- GET /api/games ----
 gamesRouter.get("/", (c) => c.json({ data: { games: GAMES_METADATA } }));
 
-/** Parse a pagination query param. Returns the integer value or null if malformed. */
+/** Parse a pagination query param. Returns the integer value or null if malformed.
+ *  Rejects non-integer strings like "1.5" or "10abc" that parseInt would silently coerce.
+ */
 function parsePaginationParam(raw: string | undefined, fallback: number): number | null {
   if (raw === undefined) return fallback;
-  const n = parseInt(raw, 10);
-  return Number.isFinite(n) ? n : null;
+  if (!/^-?\d+$/.test(raw.trim())) return null;
+  const n = Number(raw);
+  return Number.isSafeInteger(n) ? n : null;
 }
 
 // ---- GET /api/games/history ----

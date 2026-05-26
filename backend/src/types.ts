@@ -102,6 +102,7 @@ export const VerifyRoundSchema = z.object({
   clientSeed: z.string().min(1),
   nonce: z.number().int().min(0),
   gameType: z.enum(["crash", "roulette", "coinflip", "mines", "slots", "jackpot", "poker"]),
+  mineCount: z.number().int().min(1).max(24).optional(),
 });
 
 // Admin
@@ -136,7 +137,7 @@ export const RouletteIndividualBetSchema = z.object({
   type: RouletteBetTypeSchema,
   value: z.number().positive(),  // stake amount — must be > 0
   numbers: z.array(z.number().int().min(0).max(36)).optional(),
-  selection: z.number().optional(), // column/dozen identifier (1|2|3)
+  selection: z.number().int().min(1).max(3).optional(), // column/dozen identifier (1|2|3)
 });
 
 export const RouletteBetSchema = z.object({

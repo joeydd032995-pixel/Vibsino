@@ -200,11 +200,11 @@ const Crash = () => {
                         >
                           {multiplier.toFixed(2)}x
                         </motion.div>
-                        {myBet && !myBet.cashedOut && (
+                        {myBet && !myBet.cashedOut ? (
                           <p className="text-sm text-green-400 mt-2 font-semibold">
                             +${activePayout.toFixed(2)} if cashed now
                           </p>
-                        )}
+                        ) : null}
                       </motion.div>
                     )}
                     {status === "crashed" && (
@@ -219,14 +219,14 @@ const Crash = () => {
                         <div className="text-7xl font-black font-mono" style={{ color: "#ef4444" }}>
                           {(crashPoint ?? multiplier).toFixed(2)}x
                         </div>
-                        {myBet && (
+                        {myBet ? (
                           <p className="text-sm mt-2">
                             {myBet.cashedOut
                               ? <span className="text-green-400">You cashed out @ {myBet.cashoutMultiplier?.toFixed(2)}x ✓</span>
                               : <span className="text-red-400">You lost ${myBet.amount.toFixed(2)} 💸</span>
                             }
                           </p>
-                        )}
+                        ) : null}
                       </motion.div>
                     )}
                   </AnimatePresence>

@@ -136,7 +136,7 @@ const Mines = () => {
   };
 
   const canCashout = game?.phase === "playing" && (game.revealedSafe.length ?? 0) > 0;
-  const betAmount = game?.wager ?? parseFloat(amount) || 0;
+  const betAmount = game?.wager ?? (parseFloat(amount) || 0);
   const potentialPayout = game ? betAmount * game.currentMultiplier : 0;
 
   return (

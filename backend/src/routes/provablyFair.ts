@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { z } from "zod";
 import { verifyGameRound, generateNewSeedPair } from "../services/provablyFairService";
 import { db } from "../lib/db";
 import { authMiddleware } from "../middleware/auth";
 import { rateLimit } from "../middleware/rateLimit";
+import { VerifyRoundSchema } from "../types";
 import type { User } from "@prisma/client";
 
 type Variables = {
@@ -14,19 +14,11 @@ type Variables = {
 
 const provablyFairRouter = new Hono<{ Variables: Variables }>();
 
-const VerifySchema = z.object({
-  serverSeed: z.string().min(10),
-  clientSeed: z.string().min(1),
-  nonce: z.number().int().min(0),
-  gameType: z.enum(["crash", "roulette", "coinflip", "mines", "slots", "jackpot", "poker"]),
-  mineCount: z.number().int().min(1).max(24).optional(),
-});
-
 // Verify a game round
 provablyFairRouter.post(
   "/verify",
   rateLimit(60, 60000),
-  zValidator("json", VerifySchema),
+  zValidator("json", VerifyRoundSchema),
   async (c) => {
     const input = c.req.valid("json");
     const result = verifyGameRound(input);

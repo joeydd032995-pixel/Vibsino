@@ -13,14 +13,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
 /** Type guard: verify the jackpot:state socket payload has the expected shape */
-function isJackpotState(v: unknown): v is { pool: number; participants: { username: string; amount: number; tickets: number }[]; threshold: number } {
+function isJackpotState(v: unknown): v is { pool: number; participants: { username: string; amount: number; tickets: number }[]; threshold: number; sessionId?: string } {
   return (
     typeof v === "object" &&
     v !== null &&
     "pool" in v &&
     "participants" in v &&
     "threshold" in v &&
-    Array.isArray((v as { participants: unknown }).participants)
+    Array.isArray((v as { participants: unknown }).participants) &&
+    (!("sessionId" in v) || typeof (v as { sessionId: unknown }).sessionId === "string")
   );
 }
 
@@ -48,9 +49,8 @@ const Jackpot = () => {
         return;
       }
       // Detect new round: if sessionId changed, clear the winner banner
-      const incoming = state as { sessionId?: string };
-      if (incoming.sessionId && incoming.sessionId !== lastSessionId.current) {
-        lastSessionId.current = incoming.sessionId;
+      if (state.sessionId && state.sessionId !== lastSessionId.current) {
+        lastSessionId.current = state.sessionId;
         setLastResult(null);
         if (lastResultTimer.current) {
           clearTimeout(lastResultTimer.current);

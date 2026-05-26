@@ -106,7 +106,7 @@ const Poker = () => {
   const [drawResult, setDrawResult] = useState<PokerDrawResult | null>(null);
   const [showPaytable, setShowPaytable] = useState(false);
   const [serverSeedHash, setServerSeedHash] = useState("");
-  const [settledWager, setSettledWager] = useState(0);
+  const [settledWager, setSettledWager] = useState<number>(0);
   // Increment on each deal to force all cards to re-mount → re-play entrance animation
   const [dealCount, setDealCount] = useState(0);
 

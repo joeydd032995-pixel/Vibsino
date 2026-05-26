@@ -19,7 +19,7 @@ export function setupChatHandler(io: IOServer, socket: Socket) {
   socket.on("chat:join", (data: unknown) => {
     if (typeof data === "object" && data !== null && "room" in data) {
       const room = String((data as { room: unknown }).room).replace(/[^a-z0-9:-]/g, "");
-      if (room && room.length < 50) {
+      if (room && room.length <= 50) {
         socket.join(`chat:${room}`);
         sendChatHistory(socket, room).catch(console.error);
       }

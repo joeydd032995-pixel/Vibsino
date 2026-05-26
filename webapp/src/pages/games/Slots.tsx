@@ -45,7 +45,7 @@ const Slots = () => {
   const [displayReels, setDisplayReels] = useState<string[]>(["CHERRY", "ORANGE", "LEMON"]);
   const [stoppedReels, setStoppedReels] = useState<boolean[]>([false, false, false]);
   const [showPaytable, setShowPaytable] = useState(false);
-  const [settledWager, setSettledWager] = useState(0);
+  const [settledWager, setSettledWager] = useState<number>(0);
   const spinTimers = useRef<ReturnType<typeof setInterval>[]>([]);
 
   const user = useAuthStore((s) => s.user);
