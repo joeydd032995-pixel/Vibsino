@@ -192,3 +192,73 @@ export type Notification = z.infer<typeof NotificationSchema>;
 export type VerifyRoundInput = z.infer<typeof VerifyRoundSchema>;
 export type UpdateUserAdmin = z.infer<typeof UpdateUserAdminSchema>;
 export type LeaderboardEntry = z.infer<typeof LeaderboardEntrySchema>;
+
+// ---- F2P / Demo game schemas ----
+
+export const DemoGameTypeSchema = z.enum([
+  "coinflip", "roulette", "slots", "crash", "mines", "poker"
+]);
+
+export const DemoPlaySchema = z.object({
+  amount: z.string().regex(/^\d+$/, "Must be a positive integer string"),
+  clientSeed: z.string().min(1).max(64).optional(),
+  betData: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const DemoMinesStartSchema = z.object({
+  amount: z.string().regex(/^\d+$/),
+  mineCount: z.number().int().min(1).max(24),
+  clientSeed: z.string().min(1).max(64).optional(),
+});
+
+export const DemoMinesRevealSchema = z.object({
+  betId: z.string(),
+  tileIndex: z.number().int().min(0).max(24),
+});
+
+export const DemoMinesCashoutSchema = z.object({
+  betId: z.string(),
+});
+
+export const DemoPokerDealSchema = z.object({
+  amount: z.string().regex(/^\d+$/),
+  clientSeed: z.string().min(1).max(64).optional(),
+});
+
+export const DemoPokerDrawSchema = z.object({
+  betId: z.string(),
+  heldIndices: z.array(z.number().int().min(0).max(4)).max(5),
+});
+
+// Monetization
+export const TipSchema = z.object({
+  recipientUsername: z.string().min(3).max(20),
+  amount: z.string().regex(/^\d+$/),
+  message: z.string().max(140).optional(),
+});
+
+export const PurchaseBoostSchema = z.object({
+  boostType: z.enum(["vip", "doubleDaily"]),
+  durationDays: z.number().int().min(1).max(30).optional(),
+});
+
+// Verification
+export const DemoVerifySchema = z.object({
+  rawServerSeed: z.string().min(10),
+  hashedSeed: z.string().length(64),
+  clientSeed: z.string().min(1),
+  nonce: z.number().int().min(0),
+  gameType: DemoGameTypeSchema,
+  mineCount: z.number().int().min(1).max(24).optional(),
+});
+
+export type DemoGameType = z.infer<typeof DemoGameTypeSchema>;
+export type DemoPlayInput = z.infer<typeof DemoPlaySchema>;
+export type DemoMinesStartInput = z.infer<typeof DemoMinesStartSchema>;
+export type DemoMinesRevealInput = z.infer<typeof DemoMinesRevealSchema>;
+export type DemoMinesCashoutInput = z.infer<typeof DemoMinesCashoutSchema>;
+export type DemoPokerDealInput = z.infer<typeof DemoPokerDealSchema>;
+export type DemoPokerDrawInput = z.infer<typeof DemoPokerDrawSchema>;
+export type TipInput = z.infer<typeof TipSchema>;
+export type PurchaseBoostInput = z.infer<typeof PurchaseBoostSchema>;
+export type DemoVerifyInput = z.infer<typeof DemoVerifySchema>;

@@ -27,6 +27,11 @@ model User {
   sessions         UserSession[]
   notifications    Notification[]
   gameSessions     GameSession[]
+  premiumUntil     DateTime?
+  doubleDaily      Boolean   @default(false)
+  virtualBalance   VirtualBalance?
+  virtualBets      VirtualBet[]
+  serverSeeds      ServerSeed[]
 }
 
 model UserSession {
@@ -123,4 +128,54 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read])
+}
+
+model VirtualBalance {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  amount         String    @default("10000000")
+  currency       String    @default("VIBES")
+  lastDailyClaim DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VirtualBet {
+  id               String      @id @default(cuid())
+  userId           String
+  gameType         String
+  amount           String
+  currency         String      @default("VIBES")
+  betData          String?
+  outcome          String?
+  payout           String?
+  multiplier       Float?
+  serverSeedId     String
+  clientSeed       String
+  nonce            Int
+  verificationData String?
+  createdAt        DateTime    @default(now())
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serverSeed       ServerSeed  @relation(fields: [serverSeedId], references: [id])
+
+  @@index([userId])
+  @@index([userId, gameType])
+  @@index([serverSeedId])
+}
+
+model ServerSeed {
+  id           String      @id @default(cuid())
+  userId       String
+  rawSeed      String
+  hashedSeed   String
+  nonce        Int         @default(0)
+  revealedSeed String?
+  revealedAt   DateTime?
+  createdAt    DateTime    @default(now())
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  virtualBets  VirtualBet[]
+
+  @@index([userId])
+  @@index([hashedSeed])
 }
