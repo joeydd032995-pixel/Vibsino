@@ -20,6 +20,7 @@ import Slots from "./pages/games/Slots";
 import Jackpot from "./pages/games/Jackpot";
 import Poker from "./pages/games/Poker";
 import ProvablyFairVerify from "./pages/games/ProvablyFairVerify";
+import MiniApp from "./mini-app/index";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,8 @@ const App = () => (
           <Route path="/games/slots" element={<ProtectedRoute><Slots /></ProtectedRoute>} />
           <Route path="/games/jackpot" element={<ProtectedRoute><Jackpot /></ProtectedRoute>} />
           <Route path="/games/poker" element={<ProtectedRoute><Poker /></ProtectedRoute>} />
+          {/* Mini App — handles its own auth internally, no ProtectedRoute wrapper */}
+          <Route path="/mini-app" element={<MiniApp />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

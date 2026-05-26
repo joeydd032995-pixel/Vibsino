@@ -15,6 +15,9 @@ import { provablyFairRouter } from "./routes/provablyFair";
 import { adminRouter } from "./routes/admin";
 import { leaderboardRouter } from "./routes/leaderboard";
 import { gamesRouter } from "./routes/games";
+import { demoRouter } from "./routes/demo";
+import { monetizationRouter } from "./routes/monetization";
+import { verificationRouter } from "./routes/verification";
 import { setupSocketServer } from "./socket/index";
 
 const app = new Hono();
@@ -72,6 +75,9 @@ app.route("/api/provably-fair", provablyFairRouter);
 app.route("/api/admin", adminRouter);
 app.route("/api/leaderboard", leaderboardRouter);
 app.route("/api/games", gamesRouter);
+app.route("/api/demo", demoRouter);
+app.route("/api/monetization", monetizationRouter);
+app.route("/api/verification", verificationRouter);
 
 const port = Number(process.env.PORT) || 3000;
 
