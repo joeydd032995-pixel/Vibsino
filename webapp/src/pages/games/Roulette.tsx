@@ -19,6 +19,7 @@ interface ActiveBet {
   value: number;
   numbers?: number[];
   label: string;
+  selection?: number; // column/dozen identifier (1|2|3)
 }
 
 const RED_NUMBERS = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
@@ -38,9 +39,9 @@ const Roulette = () => {
   const { mutateAsync: spin, isPending } = useRoulette();
   const { data: history } = useGameHistory("roulette");
 
-  const addBet = (type: BetType, label: string, numbers?: number[]) => {
+  const addBet = (type: BetType, label: string, numbers?: number[], selection?: number) => {
     const id = `${type}-${label}-${Date.now()}`;
-    setActiveBets((prev) => [...prev, { id, type, value: chipValue, label, numbers }]);
+    setActiveBets((prev) => [...prev, { id, type, value: chipValue, label, numbers, selection }]);
   };
 
   const removeBet = (id: string) => setActiveBets((prev) => prev.filter((b) => b.id !== id));
@@ -56,6 +57,7 @@ const Roulette = () => {
         type: b.type,
         value: b.value,
         numbers: b.numbers,
+        selection: b.selection,
       }));
       const res = await spin({ amount: totalBet, bets });
       setTimeout(() => {
@@ -204,7 +206,7 @@ const Roulette = () => {
                 {["1st 12", "2nd 12", "3rd 12"].map((label, i) => (
                   <button
                     key={label}
-                    onClick={() => addBet("dozen", label, undefined)}
+                    onClick={() => addBet("dozen", label, undefined, i + 1)}
                     className="py-2 rounded-lg text-xs font-medium text-gray-300 hover:text-white transition-all"
                     style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
                   >

@@ -53,7 +53,7 @@ export const useChatStore = create<ChatState>((set) => ({
 
   markRead: () => set({ unreadCount: 0 }),
 
-  setOpen: (open) => set({ isOpen: open, unreadCount: open ? 0 : 0 }),
+  setOpen: (open) => set((s) => ({ isOpen: open, unreadCount: open ? 0 : s.unreadCount })),
 
   setActiveRoom: (room) => set({ activeRoom: room }),
 }));

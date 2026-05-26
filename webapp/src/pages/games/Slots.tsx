@@ -45,6 +45,7 @@ const Slots = () => {
   const [displayReels, setDisplayReels] = useState<string[]>(["CHERRY", "ORANGE", "LEMON"]);
   const [stoppedReels, setStoppedReels] = useState<boolean[]>([false, false, false]);
   const [showPaytable, setShowPaytable] = useState(false);
+  const [settledWager, setSettledWager] = useState<number>(0);
   const spinTimers = useRef<ReturnType<typeof setInterval>[]>([]);
 
   const user = useAuthStore((s) => s.user);
@@ -54,6 +55,7 @@ const Slots = () => {
   const handleSpin = async () => {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) return;
+    setSettledWager(amt);
 
     setSpinning(true);
     setResult(null);
@@ -118,11 +120,11 @@ const Slots = () => {
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="flex items-center gap-3 mb-6">
-            <Link to="/lobby">
-              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white px-2">
+            <Button asChild variant="ghost" size="sm" className="text-gray-400 hover:text-white px-2">
+              <Link to="/lobby">
                 <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             <span className="text-2xl">🎰</span>
             <div>
               <h1 className="text-xl font-bold text-white">Slots</h1>
@@ -220,7 +222,7 @@ const Slots = () => {
                       >
                         {isWin
                           ? `🎉 ${result.multiplier}x — +$${result.payout.toFixed(2)}`
-                          : `No win — -$${parseFloat(amount).toFixed(2)}`}
+                          : `No win — -$${settledWager.toFixed(2)}`}
                       </div>
                     </motion.div>
                   )}

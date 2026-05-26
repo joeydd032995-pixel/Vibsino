@@ -25,7 +25,7 @@ export interface VerificationResult {
 export function hashToFloat(hash: string): number {
   const bytes = Buffer.from(hash.slice(0, 8), "hex");
   const int = bytes.readUInt32BE(0);
-  return int / 0xffffffff;
+  return int / 0x100000000; // use 2^32 so float ∈ [0,1)
 }
 
 export function verifyGameRound(input: VerificationInput): VerificationResult {

@@ -19,10 +19,29 @@ const REEL_STRIP: SlotSymbol[] = [
   "LEMON", "LEMON", "LEMON", "LEMON",
 ];
 
-function getSymbol(hash: string, byteStart: number): SlotSymbol {
-  const slice = hash.slice(byteStart, byteStart + 8);
-  const int = parseInt(slice, 16);
-  return REEL_STRIP[int % REEL_STRIP.length] ?? "LEMON";
+/**
+ * Pick a symbol using rejection sampling to eliminate modulo bias.
+ * Advances byteStart within the 64-char hash; retries up to 8 times.
+ * Returns the chosen symbol and the next byteStart for chaining.
+ */
+function getSymbol(hash: string, startByte: number): { symbol: SlotSymbol; nextByte: number } {
+  // limit = largest multiple of REEL_STRIP.length that fits in uint32
+  const limit = Math.floor(0x100000000 / REEL_STRIP.length) * REEL_STRIP.length;
+  let byteStart = startByte;
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const end = byteStart + 8;
+    const slice = end <= hash.length
+      ? hash.slice(byteStart, end)
+      : hash.slice(byteStart); // shouldn't happen with 64-char hash
+    byteStart = end < hash.length ? end : 0; // wrap only on overflow
+    const int = parseInt(slice.padEnd(8, "0"), 16);
+    if (int < limit) {
+      return { symbol: REEL_STRIP[int % REEL_STRIP.length] ?? "LEMON", nextByte: byteStart };
+    }
+  }
+  // Fallback: astronomically unlikely (reject probability ≈ 0.006% per attempt)
+  return { symbol: "LEMON", nextByte: byteStart };
 }
 
 function evaluatePayline(reels: [SlotSymbol, SlotSymbol, SlotSymbol]): number {
@@ -49,10 +68,10 @@ export function spinSlots(
   nonce: number
 ): SlotsResult {
   const hash = generateGameHash(serverSeed, clientSeed, nonce);
-  const reel1 = getSymbol(hash, 0);
-  const reel2 = getSymbol(hash, 8);
-  const reel3 = getSymbol(hash, 16);
-  const reels: [SlotSymbol, SlotSymbol, SlotSymbol] = [reel1, reel2, reel3];
+  const r1 = getSymbol(hash, 0);
+  const r2 = getSymbol(hash, r1.nextByte);
+  const r3 = getSymbol(hash, r2.nextByte);
+  const reels: [SlotSymbol, SlotSymbol, SlotSymbol] = [r1.symbol, r2.symbol, r3.symbol];
   const payoutMultiplier = evaluatePayline(reels);
   return { reels, payoutMultiplier, hash };
 }

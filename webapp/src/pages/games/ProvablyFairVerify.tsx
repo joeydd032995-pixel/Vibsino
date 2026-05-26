@@ -227,7 +227,7 @@ const ProvablyFairVerify = () => {
             <div className="space-y-4">
               {/* Verification result */}
               <AnimatePresence>
-                {result && (
+                {result && result.valid && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -263,6 +263,22 @@ const ProvablyFairVerify = () => {
                         {JSON.stringify(result.outcome, null, 2)}
                       </pre>
                     </div>
+                  </motion.div>
+                )}
+                {result && !result.valid && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-2xl p-5 space-y-3"
+                    style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)" }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-red-400" />
+                      <span className="text-sm font-semibold text-red-400">Verification Failed ✗</span>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      The provided seeds do not reproduce the recorded outcome. This round may have been tampered with.
+                    </p>
                   </motion.div>
                 )}
               </AnimatePresence>

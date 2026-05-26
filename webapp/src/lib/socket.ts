@@ -1,15 +1,18 @@
 import { io, Socket } from "socket.io-client";
 
 let socket: Socket | null = null;
+let previousToken: string | null = null;
 
 export function getSocket(token: string): Socket {
-  if (socket && socket.connected) return socket;
+  // Reuse socket only if connected AND the token hasn't changed
+  if (socket && socket.connected && token === previousToken) return socket;
 
-  // Disconnect stale socket if token changed
+  // Disconnect stale socket (disconnected or token changed)
   if (socket) {
     socket.disconnect();
     socket = null;
   }
+  previousToken = token;
 
   const baseURL =
     import.meta.env.VITE_BACKEND_URL ||

@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const ChatSendSchema = z.object({
   content: z.string().min(1).max(200),
-  room: z.string().regex(/^[a-z0-9:-]+$/).default("global"),
+  room: z.string().regex(/^[a-z0-9:-]+$/).max(50).default("global"),
 });
 
 // Simple in-memory rate limit: 1 message per second per user
@@ -19,7 +19,7 @@ export function setupChatHandler(io: IOServer, socket: Socket) {
   socket.on("chat:join", (data: unknown) => {
     if (typeof data === "object" && data !== null && "room" in data) {
       const room = String((data as { room: unknown }).room).replace(/[^a-z0-9:-]/g, "");
-      if (room && room.length < 50) {
+      if (room && room.length <= 50) {
         socket.join(`chat:${room}`);
         sendChatHistory(socket, room).catch(console.error);
       }

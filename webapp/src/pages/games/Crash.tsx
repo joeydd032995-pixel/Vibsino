@@ -73,7 +73,9 @@ const Crash = () => {
     const onCashoutAck = (data: { success: boolean; multiplier?: number; payout?: number; error?: string }) => {
       setCashoutPending(false);
       if (data.success && data.payout !== undefined) {
-        updateBalance((user?.balance ?? 0) + data.payout);
+        // Read current balance via getState() to avoid stale closure
+        const currentBalance = useAuthStore.getState().user?.balance ?? 0;
+        updateBalance(currentBalance + data.payout);
         toast.success(`Cashed out at ${data.multiplier?.toFixed(2)}x — $${data.payout.toFixed(2)}!`);
       } else if (!data.success) {
         toast.error("Cashout failed", { description: data.error });
@@ -113,7 +115,7 @@ const Crash = () => {
     multiplier >= 3 ? "#f59e0b" : "#ffffff";
 
   const activePayout = myBet && !myBet.cashedOut
-    ? (parseFloat(amount) || 0) * multiplier
+    ? myBet.amount * multiplier
     : 0;
 
   return (
@@ -198,11 +200,11 @@ const Crash = () => {
                         >
                           {multiplier.toFixed(2)}x
                         </motion.div>
-                        {myBet && !myBet.cashedOut && (
+                        {myBet && !myBet.cashedOut ? (
                           <p className="text-sm text-green-400 mt-2 font-semibold">
                             +${activePayout.toFixed(2)} if cashed now
                           </p>
-                        )}
+                        ) : null}
                       </motion.div>
                     )}
                     {status === "crashed" && (
@@ -217,14 +219,14 @@ const Crash = () => {
                         <div className="text-7xl font-black font-mono" style={{ color: "#ef4444" }}>
                           {(crashPoint ?? multiplier).toFixed(2)}x
                         </div>
-                        {myBet && (
+                        {myBet ? (
                           <p className="text-sm mt-2">
                             {myBet.cashedOut
                               ? <span className="text-green-400">You cashed out @ {myBet.cashoutMultiplier?.toFixed(2)}x ✓</span>
                               : <span className="text-red-400">You lost ${myBet.amount.toFixed(2)} 💸</span>
                             }
                           </p>
-                        )}
+                        ) : null}
                       </motion.div>
                     )}
                   </AnimatePresence>

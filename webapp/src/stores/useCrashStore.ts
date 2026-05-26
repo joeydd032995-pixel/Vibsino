@@ -109,8 +109,6 @@ export const useCrashStore = create<CrashState>((set, get) => ({
   addBet: (bet) =>
     set((s) => ({
       bets: [...s.bets, bet],
-      myBet:
-        bet.userId === s.myBet?.userId ? bet : s.myBet,
     })),
 
   markCashedOut: (userId, multiplier, payout) =>

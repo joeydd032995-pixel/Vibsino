@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Trophy, Users, Ticket } from "lucide-react";
@@ -12,10 +12,25 @@ import { useSocket } from "@/hooks/useSocket";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
+/** Type guard: verify the jackpot:state socket payload has the expected shape */
+function isJackpotState(v: unknown): v is { pool: number; participants: { username: string; amount: number; tickets: number }[]; threshold: number; sessionId?: string } {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    "pool" in v &&
+    "participants" in v &&
+    "threshold" in v &&
+    Array.isArray((v as { participants: unknown }).participants) &&
+    (!("sessionId" in v) || typeof (v as { sessionId: unknown }).sessionId === "string")
+  );
+}
+
 const Jackpot = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [amount, setAmount] = useState("10");
   const [lastResult, setLastResult] = useState<{ winnerId?: string; winnerUsername?: string; payout?: number } | null>(null);
+  const lastResultTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSessionId = useRef<string | null>(null);
 
   const user = useAuthStore((s) => s.user);
   const { mutateAsync: placeBet, isPending } = useJackpotBet();
@@ -29,10 +44,26 @@ const Jackpot = () => {
     if (!socket) return;
 
     const onState = (state: unknown) => {
+      if (!isJackpotState(state)) {
+        console.warn("[Jackpot] Received invalid jackpot:state payload, ignoring");
+        return;
+      }
+      // Detect new round: if sessionId changed, clear the winner banner
+      if (state.sessionId && state.sessionId !== lastSessionId.current) {
+        lastSessionId.current = state.sessionId;
+        setLastResult(null);
+        if (lastResultTimer.current) {
+          clearTimeout(lastResultTimer.current);
+          lastResultTimer.current = null;
+        }
+      }
       queryClient.setQueryData(["jackpot"], state);
     };
     const onWinner = (data: { winnerId: string; winnerUsername: string; payout: number }) => {
+      if (lastResultTimer.current) clearTimeout(lastResultTimer.current);
       setLastResult(data);
+      // Auto-clear winner banner after 10 seconds
+      lastResultTimer.current = setTimeout(() => setLastResult(null), 10_000);
       refetch();
     };
 
@@ -41,6 +72,7 @@ const Jackpot = () => {
     return () => {
       socket.off("jackpot:state", onState);
       socket.off("jackpot:winner", onWinner);
+      if (lastResultTimer.current) clearTimeout(lastResultTimer.current);
     };
   }, [socket, queryClient, refetch]);
 
@@ -59,10 +91,6 @@ const Jackpot = () => {
   };
 
   const totalTickets = jackpot?.participants.reduce((s, p) => s + p.tickets, 0) ?? 0;
-  const myTickets =
-    jackpot?.participants
-      .filter(() => true) // Would filter by current user, but we don't have that info here
-      .reduce((s, p) => s + p.tickets, 0) ?? 0;
 
   const threshold = jackpot?.threshold ?? 10;
   const participantCount = jackpot?.participants.length ?? 0;

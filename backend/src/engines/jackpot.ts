@@ -25,10 +25,19 @@ export function resolveJackpot(input: JackpotInput): JackpotResult {
   if (participants.length === 0) throw new Error("No participants in jackpot");
 
   const hash = generateGameHash(serverSeed, clientSeed, nonce);
+
+  for (const p of participants) {
+    if (!Number.isInteger(p.tickets) || p.tickets <= 0) {
+      throw new Error(
+        `Invalid ticket count ${p.tickets} for participant ${p.userId} — must be a positive integer`
+      );
+    }
+  }
+
   const totalTickets = participants.reduce((sum, p) => sum + p.tickets, 0);
   if (totalTickets === 0) throw new Error("Total tickets is zero");
 
-  const float = parseInt(hash.slice(0, 8), 16) / 0xffffffff;
+  const float = parseInt(hash.slice(0, 8), 16) / 0x100000000;
   const winningTicket = Math.min(
     Math.floor(float * totalTickets),
     totalTickets - 1
