@@ -73,7 +73,9 @@ const Crash = () => {
     const onCashoutAck = (data: { success: boolean; multiplier?: number; payout?: number; error?: string }) => {
       setCashoutPending(false);
       if (data.success && data.payout !== undefined) {
-        updateBalance((user?.balance ?? 0) + data.payout);
+        // Read current balance via getState() to avoid stale closure
+        const currentBalance = useAuthStore.getState().user?.balance ?? 0;
+        updateBalance(currentBalance + data.payout);
         toast.success(`Cashed out at ${data.multiplier?.toFixed(2)}x — $${data.payout.toFixed(2)}!`);
       } else if (!data.success) {
         toast.error("Cashout failed", { description: data.error });
@@ -113,7 +115,7 @@ const Crash = () => {
     multiplier >= 3 ? "#f59e0b" : "#ffffff";
 
   const activePayout = myBet && !myBet.cashedOut
-    ? (parseFloat(amount) || 0) * multiplier
+    ? myBet.amount * multiplier
     : 0;
 
   return (

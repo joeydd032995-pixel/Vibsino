@@ -46,6 +46,13 @@ const GAMES_METADATA = [
 // ---- GET /api/games ----
 gamesRouter.get("/", (c) => c.json({ data: { games: GAMES_METADATA } }));
 
+/** Parse a pagination query param. Returns the integer value or null if malformed. */
+function parsePaginationParam(raw: string | undefined, fallback: number): number | null {
+  if (raw === undefined) return fallback;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
 // ---- GET /api/games/history ----
 gamesRouter.get(
   "/history",
@@ -53,8 +60,13 @@ gamesRouter.get(
   rateLimit(30, 60000),
   async (c) => {
     const user = c.get("user");
-    const page = Math.max(1, Number(c.req.query("page") ?? 1));
-    const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") ?? 20)));
+    const rawPage = parsePaginationParam(c.req.query("page"), 1);
+    const rawLimit = parsePaginationParam(c.req.query("limit"), 20);
+    if (rawPage === null || rawLimit === null) {
+      return c.json({ error: { message: "Invalid pagination parameters", code: "BAD_REQUEST" } }, 400);
+    }
+    const page = Math.max(1, rawPage);
+    const limit = Math.min(100, Math.max(1, rawLimit));
     const result = await getGameHistory(user.id, null, page, limit);
     return c.json({ data: result });
   }
@@ -71,8 +83,13 @@ gamesRouter.get(
     if (!VALID_GAME_TYPES.includes(gameType as (typeof VALID_GAME_TYPES)[number])) {
       return c.json({ error: { message: "Invalid game type", code: "BAD_REQUEST" } }, 400);
     }
-    const page = Math.max(1, Number(c.req.query("page") ?? 1));
-    const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") ?? 20)));
+    const rawPage = parsePaginationParam(c.req.query("page"), 1);
+    const rawLimit = parsePaginationParam(c.req.query("limit"), 20);
+    if (rawPage === null || rawLimit === null) {
+      return c.json({ error: { message: "Invalid pagination parameters", code: "BAD_REQUEST" } }, 400);
+    }
+    const page = Math.max(1, rawPage);
+    const limit = Math.min(100, Math.max(1, rawLimit));
     const result = await getGameHistory(user.id, gameType ?? null, page, limit);
     return c.json({ data: result });
   }

@@ -106,6 +106,7 @@ const Poker = () => {
   const [drawResult, setDrawResult] = useState<PokerDrawResult | null>(null);
   const [showPaytable, setShowPaytable] = useState(false);
   const [serverSeedHash, setServerSeedHash] = useState("");
+  const [settledWager, setSettledWager] = useState(0);
   // Increment on each deal to force all cards to re-mount → re-play entrance animation
   const [dealCount, setDealCount] = useState(0);
 
@@ -117,6 +118,7 @@ const Poker = () => {
   const handleDeal = async () => {
     const amt = parseFloat(amount);
     if (!amt) return;
+    setSettledWager(amt);
     setDrawResult(null);
     setHeldIndices([]);
     try {
@@ -225,7 +227,7 @@ const Poker = () => {
                     <div className="text-sm mt-1" style={{ color: isWin ? "#10b981" : "#6b7280" }}>
                       {isWin
                         ? `${drawResult.payoutMultiplier}x — +$${drawResult.payout.toFixed(2)}`
-                        : `-$${parseFloat(amount).toFixed(2)}`}
+                        : `-$${settledWager.toFixed(2)}`}
                     </div>
                   </motion.div>
                 )}

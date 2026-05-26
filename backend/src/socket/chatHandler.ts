@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const ChatSendSchema = z.object({
   content: z.string().min(1).max(200),
-  room: z.string().regex(/^[a-z0-9:-]+$/).default("global"),
+  room: z.string().regex(/^[a-z0-9:-]+$/).max(50).default("global"),
 });
 
 // Simple in-memory rate limit: 1 message per second per user

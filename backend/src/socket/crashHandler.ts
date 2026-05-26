@@ -8,9 +8,12 @@ const CrashBetSchema = z.object({
 });
 
 export function setupCrashHandler(io: IOServer, socket: Socket) {
-  // Join crash room and send current round state
+  // Join crash room and send current round state (may be null before first round initializes)
   socket.join("crash");
-  socket.emit("crash:state", crashRoundManager.getCurrentRound());
+  const currentRound = crashRoundManager.getCurrentRound();
+  if (currentRound !== null) {
+    socket.emit("crash:state", currentRound);
+  }
 
   // Client places a bet (only during betting phase)
   socket.on("crash:bet", async (data: unknown) => {

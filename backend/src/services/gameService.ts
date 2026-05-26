@@ -18,8 +18,17 @@ import type { Card } from "../engines/poker";
 
 const JACKPOT_THRESHOLD = 10;
 const JACKPOT_HOUSE_EDGE = 0.05;
-const MIN_BET = 0.01;
-const MAX_BET = 1000;
+
+// Per-game bet limits (must match GAMES_METADATA in routes/games.ts)
+const GAME_LIMITS: Record<string, { min: number; max: number }> = {
+  crash:    { min: 0.1,  max: 1000 },
+  roulette: { min: 0.1,  max: 500  },
+  coinflip: { min: 0.1,  max: 1000 },
+  mines:    { min: 0.1,  max: 500  },
+  jackpot:  { min: 1,    max: 1000 },
+  slots:    { min: 0.1,  max: 1000 },
+  poker:    { min: 1,    max: 500  },
+};
 
 function getHouseEdge(gameType: string): number {
   const edges: Record<string, number> = {
@@ -73,8 +82,9 @@ export async function playSingleRound(
   amount: number,
   betData: Record<string, unknown>
 ) {
-  if (amount < MIN_BET) throw new Error(`Minimum bet is $${MIN_BET}`);
-  if (amount > MAX_BET) throw new Error(`Maximum bet is $${MAX_BET}`);
+  const limits = GAME_LIMITS[gameType] ?? { min: 0.1, max: 1000 };
+  if (amount < limits.min) throw new Error(`Minimum bet for ${gameType} is $${limits.min}`);
+  if (amount > limits.max) throw new Error(`Maximum bet for ${gameType} is $${limits.max}`);
 
   const { user } = await subtractBalance(userId, amount, "bet");
   const session = await createSession(gameType, betData.clientSeed as string | undefined, userId);
@@ -110,6 +120,12 @@ export async function playSingleRound(
     case "roulette": {
       const spin = spinRoulette(serverSeed, cs, nonce);
       const bets = (betData.bets as RouletteBetItem[]) ?? [];
+      if (bets.length > 0) {
+        const total = bets.reduce((s, b) => s + b.value, 0);
+        if (Math.abs(total - amount) > 0.01) {
+          throw new Error("Bet total does not match wagered amount");
+        }
+      }
       const totalBetAmount = bets.reduce((s, b) => s + b.value, 0) || amount;
       payout = calculateRoulettePayout(spin, bets);
       multiplier = totalBetAmount > 0 ? payout / totalBetAmount : 0;
@@ -159,9 +175,8 @@ export async function playSingleRound(
     );
   }
 
-  const newBalance = payout > 0
-    ? user.balance - amount + payout
-    : user.balance - amount;
+  // user.balance is already decremented by subtractBalance; add payout when won
+  const newBalance = payout > 0 ? user.balance + payout : user.balance;
 
   return {
     betId: bet.id,
@@ -188,8 +203,9 @@ export async function startMinesGame(
   mineCount: number,
   clientSeed?: string
 ) {
-  if (amount < MIN_BET) throw new Error(`Minimum bet is $${MIN_BET}`);
-  if (amount > MAX_BET) throw new Error(`Maximum bet is $${MAX_BET}`);
+  const minesLimits = GAME_LIMITS.mines!;
+  if (amount < minesLimits.min) throw new Error(`Minimum bet for mines is $${minesLimits.min}`);
+  if (amount > minesLimits.max) throw new Error(`Maximum bet for mines is $${minesLimits.max}`);
   if (mineCount < 1 || mineCount > 24) throw new Error("Mine count must be 1-24");
 
   const { user } = await subtractBalance(userId, amount, "bet");
@@ -230,7 +246,7 @@ export async function startMinesGame(
     serverSeedHash: session.serverSeedHash,
     mineCount,
     gridSize: 25,
-    newBalance: user.balance - amount,
+    newBalance: user.balance, // user.balance already decremented by subtractBalance
   };
 }
 
@@ -414,8 +430,9 @@ export async function dealPokerHandForUser(
   amount: number,
   clientSeed?: string
 ) {
-  if (amount < MIN_BET) throw new Error(`Minimum bet is $${MIN_BET}`);
-  if (amount > MAX_BET) throw new Error(`Maximum bet is $${MAX_BET}`);
+  const pokerLimits = GAME_LIMITS.poker!;
+  if (amount < pokerLimits.min) throw new Error(`Minimum bet for poker is $${pokerLimits.min}`);
+  if (amount > pokerLimits.max) throw new Error(`Maximum bet for poker is $${pokerLimits.max}`);
 
   const { user } = await subtractBalance(userId, amount, "bet");
   const session = await createSession("poker", clientSeed, userId);
@@ -443,7 +460,7 @@ export async function dealPokerHandForUser(
     betId: bet.id,
     serverSeedHash: session.serverSeedHash,
     initialHand,
-    newBalance: user.balance - amount,
+    newBalance: user.balance, // user.balance already decremented by subtractBalance
   };
 }
 
@@ -523,8 +540,9 @@ export async function drawPokerCardsForUser(
 // ---- JACKPOT ----
 
 export async function addJackpotEntry(userId: string, amount: number) {
-  if (amount < MIN_BET) throw new Error(`Minimum bet is $${MIN_BET}`);
-  if (amount > MAX_BET) throw new Error(`Maximum bet is $${MAX_BET}`);
+  const jackpotLimits = GAME_LIMITS.jackpot!;
+  if (amount < jackpotLimits.min) throw new Error(`Minimum bet for jackpot is $${jackpotLimits.min}`);
+  if (amount > jackpotLimits.max) throw new Error(`Maximum bet for jackpot is $${jackpotLimits.max}`);
 
   const { user } = await subtractBalance(userId, amount, "bet");
 
@@ -577,18 +595,18 @@ export async function addJackpotEntry(userId: string, amount: number) {
       io?.to("jackpot").emit("jackpot:winner", {
         winnerId: jackpotResult.winnerId,
         winnerUsername: winnerBet?.user.username ?? "Unknown",
-        payout: poolAgg._sum.amount ? poolAgg._sum.amount * (1 - JACKPOT_HOUSE_EDGE) : 0,
+        payout: jackpotResult.winnerPrize, // use the already-calculated prize
       });
     }
-  } catch {
-    // Socket server may not be initialized yet — non-fatal
+  } catch (err) {
+    console.warn("[gameService] Socket broadcast failed:", err);
   }
 
   return {
     betId: bet.id,
     tickets,
     poolTotal: poolAgg._sum.amount ?? 0,
-    newBalance: user.balance - amount,
+    newBalance: user.balance, // user.balance already decremented by subtractBalance
     jackpotResult,
   };
 }
@@ -656,7 +674,7 @@ export async function resolveJackpotSession(sessionId: string) {
     `You won $${winnerPrize.toFixed(2)} from the jackpot pool!`
   );
 
-  return jackpotResult;
+  return { ...jackpotResult, winnerPrize };
 }
 
 export async function getCurrentJackpot() {

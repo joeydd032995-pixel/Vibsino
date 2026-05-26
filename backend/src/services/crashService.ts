@@ -62,8 +62,6 @@ class CrashRoundManager {
   private round: CrashRound | null = null;
   private tickInterval: ReturnType<typeof setInterval> | null = null;
   private phaseTimeout: ReturnType<typeof setTimeout> | null = null;
-  // per-user rate limit: last bet placement timestamp
-  private lastBetTime = new Map<string, number>();
 
   setIO(io: IOServer) {
     this.io = io;
@@ -71,11 +69,12 @@ class CrashRoundManager {
     setTimeout(() => this.startWaiting(), 500);
   }
 
-  getCurrentRound(): Omit<CrashRound, "serverSeed" | "crashPoint"> & {
+  getCurrentRound(): (Omit<CrashRound, "serverSeed" | "crashPoint"> & {
     currentMultiplier: number;
     elapsedMs: number;
-  } {
-    const r = this.round!;
+  }) | null {
+    if (!this.round) return null;
+    const r = this.round;
     const elapsed =
       r.flyingStartMs !== null ? Date.now() - r.flyingStartMs : 0;
     const currentMultiplier =
@@ -254,7 +253,7 @@ class CrashRoundManager {
       autoCashout,
     });
 
-    return { betId: bet.betId, newBalance: user.balance - amount };
+    return { betId: bet.betId, newBalance: user.balance }; // user.balance already decremented
   }
 
   manualCashout(userId: string): { multiplier: number; payout: number } {

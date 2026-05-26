@@ -21,6 +21,7 @@ interface MinesState {
   currentMultiplier: number;
   phase: GamePhase;
   serverSeedHash: string;
+  wager: number; // settled bet amount at round start
 }
 
 const MINE_COUNTS = [1, 3, 5, 10, 24];
@@ -70,6 +71,7 @@ const Mines = () => {
         currentMultiplier: 0,
         phase: "playing",
         serverSeedHash: res.serverSeedHash,
+        wager: amt,
       });
     } catch {
       // error handled by hook
@@ -134,7 +136,7 @@ const Mines = () => {
   };
 
   const canCashout = game?.phase === "playing" && (game.revealedSafe.length ?? 0) > 0;
-  const betAmount = parseFloat(amount) || 0;
+  const betAmount = game?.wager ?? parseFloat(amount) || 0;
   const potentialPayout = game ? betAmount * game.currentMultiplier : 0;
 
   return (

@@ -20,6 +20,7 @@ const Coinflip = () => {
   const [result, setResult] = useState<GameResult | null>(null);
   const [animating, setAnimating] = useState(false);
   const [showSeeds, setShowSeeds] = useState(false);
+  const [settledWager, setSettledWager] = useState(0);
 
   const user = useAuthStore((s) => s.user);
   const { mutateAsync: flip, isPending } = useCoinflip();
@@ -28,6 +29,7 @@ const Coinflip = () => {
   const handlePlay = async () => {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) return;
+    setSettledWager(amt);
     setAnimating(true);
     setResult(null);
     try {
@@ -127,7 +129,7 @@ const Coinflip = () => {
                       className="text-2xl font-bold"
                       style={{ color: isWin ? "#10b981" : "#ef4444" }}
                     >
-                      {isWin ? `+$${result.payout.toFixed(2)}` : `-$${parseFloat(amount).toFixed(2)}`}
+                      {isWin ? `+$${result.payout.toFixed(2)}` : `-$${settledWager.toFixed(2)}`}
                     </div>
                     <div className="text-sm text-gray-400 mt-1">
                       {isWin ? `${result.multiplier}x multiplier` : "No win this round"}

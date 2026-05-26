@@ -134,8 +134,9 @@ export const RouletteBetTypeSchema = z.enum([
 
 export const RouletteIndividualBetSchema = z.object({
   type: RouletteBetTypeSchema,
-  value: z.number(),
+  value: z.number().positive(),  // stake amount — must be > 0
   numbers: z.array(z.number().int().min(0).max(36)).optional(),
+  selection: z.number().optional(), // column/dozen identifier (1|2|3)
 });
 
 export const RouletteBetSchema = z.object({

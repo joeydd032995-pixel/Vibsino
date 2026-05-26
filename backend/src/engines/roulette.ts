@@ -7,8 +7,9 @@ export type RouletteBetType =
 
 export interface RouletteBetItem {
   type: RouletteBetType;
-  value: number;        // bet amount in currency
+  value: number;        // bet amount (stake) in currency
   numbers?: number[];   // applicable numbers for straight/split/street/corner/sixline
+  selection?: number;   // column (1|2|3) or dozen (1|2|3) identifier
 }
 
 export interface RouletteSpinResult {
@@ -28,7 +29,8 @@ export function spinRoulette(
 ): RouletteSpinResult {
   const hash = generateGameHash(serverSeed, clientSeed, nonce);
   const int = parseInt(hash.slice(0, 8), 16);
-  const float = int / 0xffffffff;
+  // Use 0x100000000 so float ∈ [0,1) — prevents number from reaching 37
+  const float = int / 0x100000000;
   const number = Math.floor(float * 37); // 0–36
 
   const color: RouletteColor =
@@ -64,13 +66,18 @@ export function calculateRoulettePayout(
       case "sixline":
         if (bet.numbers?.includes(n)) multiplier = 6;
         break;
-      case "column":
-        // bet.value = 1, 2, or 3 for column
-        if (n > 0 && n % 3 === (bet.value === 3 ? 0 : bet.value)) multiplier = 3;
+      case "column": {
+        // Use selection for the column identifier; fall back to value for backwards compat
+        const col = bet.selection ?? bet.value;
+        if (n > 0 && n % 3 === (col === 3 ? 0 : col)) multiplier = 3;
         break;
-      case "dozen":
-        if (n > 0 && Math.ceil(n / 12) === bet.value) multiplier = 3;
+      }
+      case "dozen": {
+        // Use selection for the dozen identifier; fall back to value for backwards compat
+        const doz = bet.selection ?? bet.value;
+        if (n > 0 && Math.ceil(n / 12) === doz) multiplier = 3;
         break;
+      }
       case "red":
         if (spin.color === "red") multiplier = 2;
         break;

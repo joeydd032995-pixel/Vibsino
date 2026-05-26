@@ -15,6 +15,11 @@ export interface MinesResult {
 
 export function placeMines(input: MinesInput): MinesResult {
   const { serverSeed, clientSeed, nonce, mineCount } = input;
+
+  if (!Number.isInteger(mineCount) || mineCount < 1 || mineCount > 24) {
+    throw new RangeError(`mineCount must be a positive integer 1–24, got ${mineCount}`);
+  }
+
   const hash = generateGameHash(serverSeed, clientSeed, nonce);
 
   // Fisher-Yates partial shuffle of [0..24]
@@ -36,7 +41,7 @@ export function placeMines(input: MinesInput): MinesResult {
     }
     const slice = hashPool.slice(byteOffset, byteOffset + 8);
     byteOffset += 8;
-    return parseInt(slice, 16) / 0xffffffff;
+    return parseInt(slice, 16) / 0x100000000;
   }
 
   // Partial Fisher-Yates: shuffle last mineCount positions

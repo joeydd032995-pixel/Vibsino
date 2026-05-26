@@ -9,8 +9,17 @@ import { useChatStore, type ChatMessage } from "@/stores/useChatStore";
 import { toast } from "sonner";
 
 export function useSocketListeners(socket: Socket | null) {
-  const crash = useCrashStore();
-  const chat = useChatStore();
+  // Select only stable action references to avoid re-registering on every state update
+  const hydrateRound = useCrashStore((s) => s.hydrateRound);
+  const setWaitingState = useCrashStore((s) => s.setWaitingState);
+  const setBettingState = useCrashStore((s) => s.setBettingState);
+  const setFlyingState = useCrashStore((s) => s.setFlyingState);
+  const setMultiplier = useCrashStore((s) => s.setMultiplier);
+  const addBet = useCrashStore((s) => s.addBet);
+  const markCashedOut = useCrashStore((s) => s.markCashedOut);
+  const setCrashedState = useCrashStore((s) => s.setCrashedState);
+  const addMessage = useChatStore((s) => s.addMessage);
+  const setHistory = useChatStore((s) => s.setHistory);
 
   useEffect(() => {
     if (!socket) return;
@@ -25,14 +34,14 @@ export function useSocketListeners(socket: Socket | null) {
       roundId: string;
       bettingEndsAt?: number | null;
     }) => {
-      crash.hydrateRound(data);
+      hydrateRound(data);
     };
 
     const onCrashWaiting = (data: {
       prevCrashPoint: number | null;
       prevServerSeed: string | null;
     }) => {
-      crash.setWaitingState(data.prevCrashPoint, data.prevServerSeed);
+      setWaitingState(data.prevCrashPoint, data.prevServerSeed);
     };
 
     const onCrashBetting = (data: {
@@ -40,15 +49,15 @@ export function useSocketListeners(socket: Socket | null) {
       serverSeedHash: string;
       bettingEndsAt: number;
     }) => {
-      crash.setBettingState(data.roundId, data.serverSeedHash, data.bettingEndsAt);
+      setBettingState(data.roundId, data.serverSeedHash, data.bettingEndsAt);
     };
 
     const onCrashFlying = () => {
-      crash.setFlyingState();
+      setFlyingState();
     };
 
     const onCrashTick = (data: { multiplier: number; elapsed: number }) => {
-      crash.setMultiplier(data.multiplier, data.elapsed);
+      setMultiplier(data.multiplier, data.elapsed);
     };
 
     const onCrashBetPlaced = (data: {
@@ -57,7 +66,7 @@ export function useSocketListeners(socket: Socket | null) {
       amount: number;
       autoCashout: number;
     }) => {
-      crash.addBet({
+      addBet({
         ...data,
         cashedOut: false,
         cashoutMultiplier: null,
@@ -71,7 +80,7 @@ export function useSocketListeners(socket: Socket | null) {
       multiplier: number;
       payout: number;
     }) => {
-      crash.markCashedOut(data.userId, data.multiplier, data.payout);
+      markCashedOut(data.userId, data.multiplier, data.payout);
     };
 
     const onCrashCrashed = (data: {
@@ -80,7 +89,7 @@ export function useSocketListeners(socket: Socket | null) {
       serverSeedHash: string;
       bets: CrashBetDisplay[];
     }) => {
-      crash.setCrashedState(
+      setCrashedState(
         data.crashPoint,
         data.serverSeed,
         data.serverSeedHash,
@@ -90,11 +99,11 @@ export function useSocketListeners(socket: Socket | null) {
 
     // ── Chat events ───────────────────────────────────────────────────────
     const onChatMessage = (msg: ChatMessage) => {
-      chat.addMessage(msg);
+      addMessage(msg);
     };
 
     const onChatHistory = (data: { room: string; messages: ChatMessage[] }) => {
-      chat.setHistory(data.room, data.messages);
+      setHistory(data.room, data.messages);
     };
 
     // ── Notification events ───────────────────────────────────────────────
@@ -131,5 +140,17 @@ export function useSocketListeners(socket: Socket | null) {
       socket.off("chat:history", onChatHistory);
       socket.off("notification", onNotification);
     };
-  }, [socket, crash, chat]);
+  }, [
+    socket,
+    hydrateRound,
+    setWaitingState,
+    setBettingState,
+    setFlyingState,
+    setMultiplier,
+    addBet,
+    markCashedOut,
+    setCrashedState,
+    addMessage,
+    setHistory,
+  ]);
 }
