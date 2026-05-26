@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import BalanceDisplay from "@/components/casino/BalanceDisplay";
 import NotificationBell from "@/components/casino/NotificationBell";
+import { ChatDrawer } from "@/components/casino/ChatDrawer";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useState } from "react";
 import DepositWithdrawModal from "@/components/casino/DepositWithdrawModal";
@@ -79,6 +80,9 @@ const Navbar = ({ onMenuClick }: NavbarProps) => {
               Deposit
             </Button>
           </div>
+
+          {/* Chat button */}
+          <ChatDrawer />
 
           {/* Notification bell */}
           <NotificationBell />

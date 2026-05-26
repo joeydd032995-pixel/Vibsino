@@ -2,6 +2,8 @@ import "@vibecodeapp/proxy"; // DO NOT REMOVE OTHERWISE VIBECODE PROXY WILL NOT 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger as honoLogger } from "hono/logger";
+import { serve } from "@hono/node-server";
+import { Server as IOServer } from "socket.io";
 import { env } from "./config/env";
 import { securityHeaders } from "./middleware/security";
 import { rateLimit } from "./middleware/rateLimit";
@@ -12,11 +14,13 @@ import { notificationsRouter } from "./routes/notifications";
 import { provablyFairRouter } from "./routes/provablyFair";
 import { adminRouter } from "./routes/admin";
 import { leaderboardRouter } from "./routes/leaderboard";
+import { gamesRouter } from "./routes/games";
+import { setupSocketServer } from "./socket/index";
 
 const app = new Hono();
 
-// CORS middleware - validates origin against allowlist
-const allowed = [
+// CORS allowlist — used by both HTTP and Socket.IO
+const allowedOrigins = [
   /^http:\/\/localhost(:\d+)?$/,
   /^http:\/\/127\.0\.0\.1(:\d+)?$/,
   /^https:\/\/[a-z0-9-]+\.dev\.vibecode\.run$/,
@@ -26,11 +30,16 @@ const allowed = [
   /^https:\/\/vibecode\.dev$/,
 ];
 
+function isAllowedOrigin(origin: string): boolean {
+  return allowedOrigins.some((re) => re.test(origin));
+}
+
+// CORS middleware
 app.use(
   "*",
   cors({
     origin: (origin) =>
-      origin && allowed.some((re) => re.test(origin)) ? origin : null,
+      origin && isAllowedOrigin(origin) ? origin : null,
     credentials: true,
   })
 );
@@ -62,10 +71,32 @@ app.route("/api/notifications", notificationsRouter);
 app.route("/api/provably-fair", provablyFairRouter);
 app.route("/api/admin", adminRouter);
 app.route("/api/leaderboard", leaderboardRouter);
+app.route("/api/games", gamesRouter);
 
 const port = Number(process.env.PORT) || 3000;
 
-export default {
-  port,
-  fetch: app.fetch,
-};
+// Use @hono/node-server to get an http.Server for Socket.IO attachment
+const httpServer = serve({ fetch: app.fetch, port });
+
+// Attach Socket.IO to the HTTP server
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const io = new IOServer(httpServer as any, {
+  cors: {
+    origin: (origin, callback) => {
+      if (!origin || isAllowedOrigin(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  },
+  path: "/socket.io",
+  transports: ["websocket", "polling"],
+});
+
+// Wire up all socket handlers + start crash round loop
+setupSocketServer(io);
+
+console.log(`🎰 Vibecode Casino API running on port ${port}`);
+console.log(`🔌 Socket.IO ready at /socket.io`);

@@ -26,6 +26,7 @@ model User {
   chatMessages     ChatMessage[]
   sessions         UserSession[]
   notifications    Notification[]
+  gameSessions     GameSession[]
 }
 
 model UserSession {
@@ -66,11 +67,14 @@ model GameSession {
   nonce          Int      @default(0)
   result         String?
   houseEdge      Float    @default(0.02)
+  userId         String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   bets           Bet[]
+  user           User?    @relation(fields: [userId], references: [id])
 
   @@index([gameType, status])
+  @@index([userId, gameType, status])
 }
 
 model Bet {
@@ -85,6 +89,7 @@ model Bet {
   multiplier    Float?
   verifiable    Boolean     @default(true)
   createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   gameSession   GameSession @relation(fields: [gameSessionId], references: [id])

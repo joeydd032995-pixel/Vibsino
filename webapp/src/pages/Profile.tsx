@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Trophy, TrendingUp, Zap, DollarSign, Copy, Check } from "lucide-react";
+import { ArrowLeft, Trophy, TrendingUp, Zap, DollarSign, Copy, Check, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/layout/Navbar";
+import { toast } from "sonner";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useWalletAuth } from "@/hooks/useWalletAuth";
 
 interface BetRecord {
   id: string;
@@ -58,6 +60,22 @@ const StatCard = ({
 const Profile = () => {
   const user = useAuthStore((s) => s.user);
   const [copied, setCopied] = useState(false);
+  const [connecting, setConnecting] = useState<string | null>(null);
+  const { connectMetaMask, connectPhantom } = useWalletAuth();
+
+  const handleConnectWallet = async (type: "metamask" | "phantom") => {
+    setConnecting(type);
+    try {
+      if (type === "metamask") await connectMetaMask();
+      else await connectPhantom();
+      toast.success("Wallet connected successfully!");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Connection failed";
+      toast.error("Could not connect wallet", { description: msg });
+    } finally {
+      setConnecting(null);
+    }
+  };
 
   const wins = MOCK_HISTORY.filter((b) => b.result === "win").length;
   const winRate = Math.round((wins / MOCK_HISTORY.length) * 100);
@@ -153,38 +171,73 @@ const Profile = () => {
             border: "1px solid rgba(245,158,11,0.1)",
           }}
         >
-          <h2 className="text-sm font-semibold text-white mb-3">Wallet</h2>
+          <div className="flex items-center gap-2 mb-3">
+            <Wallet className="h-4 w-4" style={{ color: "#f59e0b" }} />
+            <h2 className="text-sm font-semibold text-white">Wallet</h2>
+          </div>
           {user?.walletAddress ? (
-            <div className="flex items-center gap-3">
-              <div
-                className="flex-1 px-3 py-2 rounded-lg font-mono text-sm text-gray-300"
-                style={{ background: "rgba(10,10,15,0.8)", border: "1px solid rgba(245,158,11,0.1)" }}
-              >
-                {user.walletAddress}
-              </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleCopy}
-                className="flex-shrink-0 gap-1"
-                style={{ color: copied ? "#10b981" : "#f59e0b" }}
-              >
-                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                {copied ? "Copied" : "Copy"}
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">No wallet connected</p>
-              <Link to="/auth">
+            <div className="space-y-2">
+              {/* Chain badge */}
+              {user.walletChain && (
+                <span
+                  className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium"
+                  style={{
+                    background: user.walletChain === "solana" ? "rgba(99,102,241,0.15)" : "rgba(245,158,11,0.15)",
+                    color: user.walletChain === "solana" ? "#818cf8" : "#f59e0b",
+                    border: `1px solid ${user.walletChain === "solana" ? "rgba(99,102,241,0.3)" : "rgba(245,158,11,0.3)"}`,
+                  }}
+                >
+                  {user.walletChain === "solana" ? "👻 Solana" : "🦊 Ethereum"}
+                </span>
+              )}
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex-1 px-3 py-2 rounded-lg font-mono text-sm text-gray-300 truncate"
+                  style={{ background: "rgba(10,10,15,0.8)", border: "1px solid rgba(245,158,11,0.1)" }}
+                >
+                  {user.walletAddress}
+                </div>
                 <Button
                   size="sm"
-                  className="gap-2 text-xs"
-                  style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}
+                  variant="ghost"
+                  onClick={handleCopy}
+                  className="flex-shrink-0 gap-1"
+                  style={{ color: copied ? "#10b981" : "#f59e0b" }}
                 >
-                  Connect Wallet
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copied ? "Copied" : "Copy"}
                 </Button>
-              </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-500">No wallet connected. Connect one to use crypto features.</p>
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  size="sm"
+                  disabled={connecting !== null}
+                  onClick={() => handleConnectWallet("metamask")}
+                  className="gap-2 text-xs h-8"
+                  style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }}
+                >
+                  {connecting === "metamask" ? (
+                    <div className="w-3 h-3 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "rgba(245,158,11,0.3)", borderTopColor: "#f59e0b" }} />
+                  ) : "🦊"}
+                  {connecting === "metamask" ? "Connecting…" : "MetaMask"}
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={connecting !== null}
+                  onClick={() => handleConnectWallet("phantom")}
+                  className="gap-2 text-xs h-8"
+                  style={{ background: "rgba(99,102,241,0.12)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.25)" }}
+                >
+                  {connecting === "phantom" ? (
+                    <div className="w-3 h-3 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "rgba(99,102,241,0.3)", borderTopColor: "#818cf8" }} />
+                  ) : "👻"}
+                  {connecting === "phantom" ? "Connecting…" : "Phantom"}
+                </Button>
+              </div>
             </div>
           )}
         </div>

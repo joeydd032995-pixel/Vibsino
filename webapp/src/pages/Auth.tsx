@@ -3,12 +3,15 @@ import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Eye, EyeOff, Wallet, Mail, Lock, User, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Wallet, Mail, Lock, User, ArrowRight, AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useWalletAuth } from "@/hooks/useWalletAuth";
 
 const loginSchema = z.object({
   username: z.string().min(2, "Username required"),
@@ -28,11 +31,27 @@ const registerSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 type RegisterForm = z.infer<typeof registerSchema>;
 
+interface AuthUser {
+  id: string;
+  username: string;
+  email: string | null;
+  walletAddress: string | null;
+  walletChain: string | null;
+  balance: number;
+  role: string;
+  createdAt: string;
+}
+
+interface AuthResponse {
+  token: string;
+  user: AuthUser;
+}
+
 const WALLET_OPTIONS = [
-  { id: "metamask", name: "MetaMask", icon: "🦊", desc: "Browser Extension", chain: "Ethereum" },
-  { id: "phantom", name: "Phantom", icon: "👻", desc: "Browser Extension", chain: "Solana" },
-  { id: "coinbase", name: "Coinbase Wallet", icon: "🔵", desc: "Mobile / Extension", chain: "Multi-chain" },
-  { id: "walletconnect", name: "WalletConnect", icon: "🔗", desc: "QR Code Scan", chain: "Multi-chain" },
+  { id: "metamask", name: "MetaMask", icon: "🦊", desc: "Browser Extension", chain: "Ethereum", real: true },
+  { id: "phantom", name: "Phantom", icon: "👻", desc: "Browser Extension", chain: "Solana", real: true },
+  { id: "coinbase", name: "Coinbase Wallet", icon: "🔵", desc: "Mobile / Extension", chain: "Multi-chain", real: false },
+  { id: "walletconnect", name: "WalletConnect", icon: "🔗", desc: "QR Code Scan", chain: "Multi-chain", real: false },
 ];
 
 const LoginTab = () => {
@@ -40,27 +59,29 @@ const LoginTab = () => {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
+  const { register, handleSubmit, formState: { errors, isSubmitting }, setError } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   });
 
   const onSubmit = async (data: LoginForm) => {
-    // Mock login for Phase 1 — replace with real API call in Phase 2
-    await new Promise((r) => setTimeout(r, 800));
-    setAuth(
-      {
-        id: "mock-1",
+    try {
+      const result = await api.post<AuthResponse>("/api/auth/login", {
         username: data.username,
-        email: null,
-        walletAddress: null,
-        walletChain: null,
-        balance: 1000,
-        role: "user",
-        createdAt: new Date().toISOString(),
-      },
-      "mock-token"
-    );
-    navigate("/lobby");
+        password: data.password,
+      });
+      setAuth(result.user, result.token);
+      toast.success(`Welcome back, ${result.user.username}!`);
+      navigate("/lobby");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Login failed";
+      if (msg.toLowerCase().includes("invalid") || msg.toLowerCase().includes("credentials")) {
+        setError("password", { message: "Invalid username or password" });
+      } else if (msg.toLowerCase().includes("suspended")) {
+        toast.error("Account suspended", { description: "Please contact support." });
+      } else {
+        toast.error("Sign in failed", { description: msg });
+      }
+    }
   };
 
   return (
@@ -98,7 +119,12 @@ const LoginTab = () => {
             {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
-        {errors.password && <p className="text-xs text-red-400">{errors.password.message}</p>}
+        {errors.password && (
+          <p className="text-xs text-red-400 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {errors.password.message}
+          </p>
+        )}
       </div>
 
       <Button
@@ -119,26 +145,28 @@ const RegisterTab = () => {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterForm>({
+  const { register, handleSubmit, formState: { errors, isSubmitting }, setError } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
   });
 
   const onSubmit = async (data: RegisterForm) => {
-    await new Promise((r) => setTimeout(r, 800));
-    setAuth(
-      {
-        id: "mock-2",
+    try {
+      const result = await api.post<AuthResponse>("/api/auth/register", {
         username: data.username,
-        email: data.email ?? null,
-        walletAddress: null,
-        walletChain: null,
-        balance: 100, // welcome bonus
-        role: "user",
-        createdAt: new Date().toISOString(),
-      },
-      "mock-token"
-    );
-    navigate("/lobby");
+        email: data.email || undefined,
+        password: data.password,
+      });
+      setAuth(result.user, result.token);
+      toast.success("Account created! You get $100 welcome bonus 🎉");
+      navigate("/lobby");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Registration failed";
+      if (msg.toLowerCase().includes("duplicate") || msg.toLowerCase().includes("taken") || msg.toLowerCase().includes("already")) {
+        setError("username", { message: "Username or email already taken" });
+      } else {
+        toast.error("Registration failed", { description: msg });
+      }
+    }
   };
 
   return (
@@ -227,10 +255,31 @@ const RegisterTab = () => {
 
 const WalletTab = () => {
   const [connecting, setConnecting] = useState<string | null>(null);
+  const { connectMetaMask, connectPhantom } = useWalletAuth();
+  const navigate = useNavigate();
 
-  const handleConnect = (walletId: string) => {
+  const handleConnect = async (walletId: string, isReal: boolean) => {
+    if (!isReal) {
+      toast.info("Coming soon", { description: "This wallet connector is not yet available." });
+      return;
+    }
     setConnecting(walletId);
-    setTimeout(() => setConnecting(null), 1500);
+    try {
+      if (walletId === "metamask") await connectMetaMask();
+      else if (walletId === "phantom") await connectPhantom();
+      toast.success("Wallet connected! Welcome to Vibsino 🎰");
+      navigate("/lobby");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Connection failed";
+      // User rejected — quieter notification
+      if (msg.toLowerCase().includes("user rejected") || msg.toLowerCase().includes("user denied")) {
+        toast.error("Wallet connection cancelled");
+      } else {
+        toast.error("Connection failed", { description: msg });
+      }
+    } finally {
+      setConnecting(null);
+    }
   };
 
   return (
@@ -242,15 +291,15 @@ const WalletTab = () => {
         {WALLET_OPTIONS.map((w) => (
           <button
             key={w.id}
-            onClick={() => handleConnect(w.id)}
+            onClick={() => handleConnect(w.id, w.real)}
             disabled={connecting !== null}
-            className="flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200"
+            className="flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200 disabled:opacity-60"
             style={{
               background: connecting === w.id ? "rgba(245,158,11,0.1)" : "rgba(19,19,31,0.8)",
               border: `1px solid ${connecting === w.id ? "rgba(245,158,11,0.4)" : "rgba(245,158,11,0.15)"}`,
             }}
             onMouseEnter={(e) => {
-              if (!connecting) {
+              if (!connecting && w.real) {
                 e.currentTarget.style.borderColor = "rgba(245,158,11,0.35)";
                 e.currentTarget.style.background = "rgba(245,158,11,0.06)";
               }
@@ -264,17 +313,37 @@ const WalletTab = () => {
           >
             <span className="text-2xl">{w.icon}</span>
             <div className="flex-1">
-              <p className="font-medium text-white text-sm">{w.name}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-white text-sm">{w.name}</p>
+                {!w.real && (
+                  <span
+                    className="text-xs px-1.5 py-0.5 rounded"
+                    style={{ background: "rgba(99,102,241,0.2)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.3)" }}
+                  >
+                    Soon
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-gray-500">{w.desc} · {w.chain}</p>
             </div>
-            <div className="text-xs" style={{ color: "#f59e0b" }}>
-              {connecting === w.id ? "Connecting..." : <Wallet className="h-4 w-4" />}
+            <div className="text-xs shrink-0" style={{ color: "#f59e0b" }}>
+              {connecting === w.id ? (
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className="w-3 h-3 rounded-full border-2 border-t-transparent animate-spin"
+                    style={{ borderColor: "rgba(245,158,11,0.3)", borderTopColor: "#f59e0b" }}
+                  />
+                  <span className="text-xs">Connecting…</span>
+                </div>
+              ) : (
+                <Wallet className="h-4 w-4 opacity-60" />
+              )}
             </div>
           </button>
         ))}
       </div>
-      <p className="text-xs text-gray-600 text-center pt-2">
-        Wallet signing available in Phase 2. UI preview only.
+      <p className="text-xs text-gray-600 text-center pt-1">
+        Your wallet address will be used to auto-create an account on first sign-in.
       </p>
     </div>
   );
