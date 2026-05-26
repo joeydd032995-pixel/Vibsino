@@ -33,8 +33,11 @@ import {
   formatVibes,
 } from "../services/virtualBalanceService";
 import { getOrCreateActiveSeed } from "../utils/provablyFair";
+import type { User } from "@prisma/client";
 
-const demoRouter = new Hono();
+type Variables = { user: User; userId: string };
+
+const demoRouter = new Hono<{ Variables: Variables }>();
 
 // All demo routes require auth
 demoRouter.use("*", authMiddleware);

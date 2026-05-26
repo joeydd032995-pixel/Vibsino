@@ -13,8 +13,8 @@ import {
   revealServerSeed,
   incrementSeedNonce,
   getProvablyFairResult,
-  F2PGameType,
 } from "../utils/provablyFair";
+import type { F2PGameType } from "../utils/provablyFair";
 import {
   getOrCreateVirtualBalance,
   addVirtualBalance,
@@ -33,7 +33,7 @@ import { spinRoulette } from "../engines/roulette";
 import { spinSlots } from "../engines/slots";
 import { playCrash } from "../engines/crash";
 import { placeMines } from "../engines/mines";
-import { dealPokerHand, drawPokerCards } from "../engines/poker";
+import { dealPokerHand, drawPokerCards, type Card } from "../engines/poker";
 
 // ─── Per-game VIBES bet limits (stored with 3 implied decimals) ───────────────
 // e.g. min 1000 = 1.000 VIBES, max 10_000_000 = 10,000.000 VIBES
@@ -97,7 +97,7 @@ export async function playDemoRound(
   if (gameType === "coinflip") {
     const choice = (betData?.choice as "heads" | "tails") ?? "heads";
     const result = playCoinflip({ serverSeed: seedRecord.rawSeed, clientSeed, nonce, choice });
-    won = result.won;
+    won = result.win;
     multiplier = won ? 1.98 : 0;
     payout = won ? BigInt(Math.floor(Number(amount) * 1.98)) : 0n;
     outcomeData = { result: result.result, choice };
@@ -470,8 +470,8 @@ export async function drawDemoPokerCards(
   if (!bet) throw new Error("Active poker hand not found");
 
   const betData = JSON.parse(bet.betData ?? "{}") as {
-    initialHand: { rank: string; suit: string }[];
-    deck: { rank: string; suit: string }[];
+    initialHand: Card[];
+    deck: Card[];
   };
 
   // Use the existing drawPokerCards engine which handles the draw and evaluation

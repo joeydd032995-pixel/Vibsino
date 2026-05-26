@@ -167,7 +167,7 @@ export function getProvablyFairResult(
         nonce,
         choice: (betData?.choice as "heads" | "tails") ?? "heads",
       });
-      const won = result.won;
+      const won = result.win;
       return {
         hash,
         float,
@@ -176,7 +176,7 @@ export function getProvablyFairResult(
           choice: betData?.choice ?? "heads",
           float,
         },
-        multiplier: won ? result.payout / ((betData?.amount as number) || 1) : 0,
+        multiplier: won ? result.multiplier : 0,
         won,
       };
     }
