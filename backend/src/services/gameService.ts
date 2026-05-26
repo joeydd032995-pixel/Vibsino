@@ -86,6 +86,18 @@ export async function playSingleRound(
   if (amount < limits.min) throw new Error(`Minimum bet for ${gameType} is $${limits.min}`);
   if (amount > limits.max) throw new Error(`Maximum bet for ${gameType} is $${limits.max}`);
 
+  // Validate roulette bet totals BEFORE any balance mutation so malformed
+  // payloads are rejected without charging the user.
+  if (gameType === "roulette") {
+    const bets = (betData.bets as Array<{ value: number }>) ?? [];
+    if (bets.length > 0) {
+      const total = bets.reduce((s, b) => s + b.value, 0);
+      if (Math.abs(total - amount) > 0.01) {
+        throw new Error("Bet total does not match wagered amount");
+      }
+    }
+  }
+
   const { user } = await subtractBalance(userId, amount, "bet");
   const session = await createSession(gameType, betData.clientSeed as string | undefined, userId);
   const { serverSeed, clientSeed, nonce } = session;
@@ -120,12 +132,6 @@ export async function playSingleRound(
     case "roulette": {
       const spin = spinRoulette(serverSeed, cs, nonce);
       const bets = (betData.bets as RouletteBetItem[]) ?? [];
-      if (bets.length > 0) {
-        const total = bets.reduce((s, b) => s + b.value, 0);
-        if (Math.abs(total - amount) > 0.01) {
-          throw new Error("Bet total does not match wagered amount");
-        }
-      }
       const totalBetAmount = bets.reduce((s, b) => s + b.value, 0) || amount;
       payout = calculateRoulettePayout(spin, bets);
       multiplier = totalBetAmount > 0 ? payout / totalBetAmount : 0;
