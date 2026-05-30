@@ -19,6 +19,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...(window as any).Telegram?.WebApp?.initData
+        ? { "X-Telegram-Init-Data": (window as any).Telegram.WebApp.initData }
+        : {},
       ...options.headers,
     },
     credentials: "include",

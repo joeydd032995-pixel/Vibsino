@@ -8,6 +8,7 @@ import { env } from "./config/env";
 import { securityHeaders } from "./middleware/security";
 import { rateLimit } from "./middleware/rateLimit";
 import { authRouter } from "./routes/auth";
+import { telegramAuthRouter } from "./routes/telegramAuth";
 import { userRouter } from "./routes/user";
 import { balanceRouter } from "./routes/balance";
 import { notificationsRouter } from "./routes/notifications";
@@ -18,6 +19,8 @@ import { gamesRouter } from "./routes/games";
 import { demoRouter } from "./routes/demo";
 import { monetizationRouter } from "./routes/monetization";
 import { verificationRouter } from "./routes/verification";
+import { bot } from "./bot/index";
+import { webhookCallback } from "grammy";
 import { setupSocketServer } from "./socket/index";
 
 const app = new Hono();
@@ -68,6 +71,7 @@ app.get("/health", (c) =>
 
 // Routes
 app.route("/api/auth", authRouter);
+app.route("/api/auth/telegram", telegramAuthRouter);
 app.route("/api/user", userRouter);
 app.route("/api/balance", balanceRouter);
 app.route("/api/notifications", notificationsRouter);
@@ -78,6 +82,9 @@ app.route("/api/games", gamesRouter);
 app.route("/api/demo", demoRouter);
 app.route("/api/monetization", monetizationRouter);
 app.route("/api/verification", verificationRouter);
+
+// Telegram Webhook
+app.post("/api/webhook", webhookCallback(bot, "hono"));
 
 const port = Number(process.env.PORT) || 3000;
 

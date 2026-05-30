@@ -9,6 +9,8 @@ const envSchema = z.object({
   RATE_LIMIT_MAX: z.coerce.number().default(100),
   MIN_BET: z.coerce.number().default(0.01),
   MAX_BET: z.coerce.number().default(1000),
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  WEBAPP_URL: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

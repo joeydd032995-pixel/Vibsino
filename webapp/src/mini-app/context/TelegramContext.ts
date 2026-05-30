@@ -25,6 +25,8 @@ export interface TelegramContextValue {
   isMiniApp: boolean;
   /** Telegram user data from initDataUnsafe */
   twaUser: TelegramUser | null;
+  /** Raw initData string for server-side validation */
+  initData: string | null;
   /** Color scheme from Telegram theme */
   colorScheme: "dark" | "light";
   /** Haptic feedback utilities */
@@ -48,6 +50,7 @@ export function useTelegram(): TelegramContextValue {
     return {
       isMiniApp: false,
       twaUser: null,
+      initData: null,
       colorScheme: "dark",
       haptic: {
         tap: () => {},

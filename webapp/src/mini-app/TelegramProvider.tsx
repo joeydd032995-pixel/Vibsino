@@ -22,6 +22,7 @@ interface TelegramWebApp {
     button_text_color?: string;
     secondary_bg_color?: string;
   };
+  initData: string;
   initDataUnsafe: {
     user?: TelegramUser;
   };
@@ -55,6 +56,7 @@ interface TelegramProviderProps {
 export default function TelegramProvider({ children }: TelegramProviderProps) {
   const [isMiniApp, setIsMiniApp] = useState(false);
   const [twaUser, setTwaUser] = useState<TelegramUser | null>(null);
+  const [initData, setInitData] = useState<string | null>(null);
   const [colorScheme, setColorScheme] = useState<"dark" | "light">("dark");
   const backHandlerRef = useRef<(() => void) | null>(null);
 
@@ -76,6 +78,7 @@ export default function TelegramProvider({ children }: TelegramProviderProps) {
       setColorScheme(twa.colorScheme ?? "dark");
       // Extract user info
       setTwaUser(twa.initDataUnsafe?.user ?? null);
+      setInitData(twa.initData);
 
       // Apply Telegram theme CSS variables
       const tp = twa.themeParams;
@@ -154,6 +157,7 @@ export default function TelegramProvider({ children }: TelegramProviderProps) {
   const value: TelegramContextValue = {
     isMiniApp,
     twaUser,
+    initData,
     colorScheme,
     haptic,
     expand: () => getTWA()?.expand(),
